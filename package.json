@@ -1,0 +1,16 @@
+{
+  "name": "md2ppt",
+  "version": "1.0.0",
+  "private": false,
+  "description": "A stable Markdown to PPTX/PDF workflow based on Marp.",
+  "scripts": {
+    "export:html": "marp deck.md --html --allow-local-files -o outputs/deck.html",
+    "export:pdf": "marp deck.md --pdf --allow-local-files -o outputs/deck.pdf",
+    "export:pptx": "marp deck.md --pptx --allow-local-files -o outputs/deck.pptx",
+    "export:all": "mkdir -p outputs && npm run export:html && npm run export:pdf && npm run export:pptx"
+  },
+  "devDependencies": {
+    "@marp-team/marp-cli": "^4.2.3"
+  }
+}
+
