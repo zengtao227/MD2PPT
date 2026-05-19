@@ -37,6 +37,21 @@ npm run export:all
 - [Markdown 写作与排版规范](docs/markdown-writing-guide.md)
 - [预览与导出一致性指南](docs/preview-export-consistency.md)
 - [导出稳定性检查清单](docs/checklist.md)
+- [UI/UX Pro Max 设计支持](docs/design-skill.md)
+
+## 设计支持
+
+仓库内置了 `skills/ui-ux-pro-max` 作为本地设计知识库。做路演、比赛答辩、项目方案类 PPT 前，先用它检索合适的产品类型、视觉风格、字体、配色和 UX 检查项，再进入 Markdown 或 PPTX 生成。
+
+常用命令示例：
+
+```bash
+python3 skills/ui-ux-pro-max/scripts/search.py "professional education service" --domain product
+python3 skills/ui-ux-pro-max/scripts/search.py "minimal professional editorial" --domain style
+python3 skills/ui-ux-pro-max/scripts/search.py "professional modern" --domain typography
+python3 skills/ui-ux-pro-max/scripts/search.py "service education" --domain color
+python3 skills/ui-ux-pro-max/scripts/search.py "accessibility layout spacing contrast" --domain ux
+```
 
 ## 适合场景
 
