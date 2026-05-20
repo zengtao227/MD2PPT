@@ -98,11 +98,11 @@ Never include file paths in a generation prompt unless those files actually exis
 [3] deck.md
     Thesis, audience, per-slide: claim + proof object + source
         ↓
-[4] Design Intelligence
-    design-consultant → palette options (visual) → user confirms color direction
+[4] 颜色层 (Color Layer)
+    design-consultant → 2-3 套配色方案（可视色块）→ 迭代调整 → 用户确认
         ↓
-[5] Design Lock
-    Confirm structural lock from design-locks/ + record color overrides
+[5] 结构层 (Structure Layer)
+    展示全部 5 个 design-locks → 用户选择 → 记录颜色覆盖 → 两层都确认后才 lock
         ↓
 [6] Generation  (environment-dependent — see Tool Routing)
         ↓
@@ -176,7 +176,7 @@ Rules:
 - Every slide needs one primary `Proof object` (chart, diagram, table, big number, case)
 - Every number and logo needs a `Source`; write "missing" if unverifiable — never invent data
 
-### Step 4 — Design Consultation (Interactive)
+### Step 4 — 颜色层 (Color Layer)
 
 Run `design-consultant` (scripts: `skills/ui-ux-pro-max/scripts/search.py`). Read `references/design-workflow.md` for query protocol.
 
@@ -222,41 +222,44 @@ The output of Step 4 is:
 - Confirmed mood and style
 - Suggested design-lock for the structural layer
 
-### Step 5 — Lock the Design (Structure Layer)
+### Step 5 — 结构层 (Structure Layer)
 
-Step 4 confirmed the **color layer**. Step 5 selects a design-lock for the **structural layer** (typography rules, grid, spacing, chart grammar, forbidden patterns).
+颜色层（Step 4）已确认。结构层提供设计的骨架：字体层级、网格比例、图表标注规则、禁用效果。
 
-Read the frontmatter of each `design-locks/*.md` (suitable_for / tone / formality / density) to match structure to the confirmed mood.
+**展示全部 5 个 design-lock 供用户选择：**
 
-**Why Step 5 is still needed after Step 4:**
-Design-locks provide the structural DNA that is hard to define from scratch: font hierarchy, grid proportions, chart annotation rules, forbidden effects. Step 4 customizes color; Step 5 provides the structure that makes the deck look professionally composed.
+基于 Step 4 确认的配色情绪，说明每个 lock 的结构特征：
 
-**Selection — present the recommendation, then STOP:**
+| Lock | 结构风格 | 字体 | 密度 | 适合 |
+|------|---------|------|------|------|
+| `swiss-klein-blue` | 瑞士国际主义，直边网格，无圆角 | 黑体 + 无衬线 | 中 | 商业计划、产品路线图、投资人 |
+| `linear-dark` | 工程精密，暗色，紧凑排版 | 等宽感无衬线 | 中高 | SaaS、技术平台、工程演示 |
+| `guizang-indigo` | 冷调学术，高信息密度 | 宋体 + 衬线西文 | 高 | 技术方案、数据报告、竞赛答辩 |
+| `guizang-monocle` | 温暖纸感，叙事排版 | 宋体 + 人文无衬线 | 中 | 路演、课程、观点类演示 |
+| `notion-warm` | 轻量极简，文档感 | 无衬线，宽松间距 | 低 | 内部汇报、文化类、轻量演示 |
 
-State: "基于你确认的配色方向，我推荐使用 **[lock名]** 的结构层，因为……"
+推荐一个最匹配 Step 4 配色情绪的选项，说明理由。
 
-**STOP. Wait for user to confirm the lock choice.**
+**STOP. 等用户从上表中明确选择一个 lock，不得自行决定。**
 
-After confirmation, write the Design Contract to `deck.md`. If Step 4 produced color overrides different from the lock's defaults, record them explicitly:
+两层都确认之后，才写入 `deck.md` 的 Design Contract：
 
 ```markdown
 ## Design Contract
 - Structure lock: design-locks/<lock>.md
-- Color overrides from consultation:
-  - accent: #[confirmed hex] (replaces lock default)
-  - background: #[confirmed hex] (if changed)
-  - _(list only values that differ from lock defaults)_
-- Must keep: lock typography hierarchy, grid grammar, chart grammar
+- Color layer (from Step 4):
+  - background: #[hex]
+  - primary text: #[hex]
+  - accent: #[hex]
+  - muted: #[hex]
+  - _(只列与 lock 默认值不同的颜色)_
+- Typography: [中文字体] + [西文字体]（来自 Step 4 确认）
+- Must keep: lock 的字体层级、网格语法、图表标注规则
 - May adapt: layout families to match proof objects
 - Must avoid: gradients, generic card grids, invented logos, unsupported metrics
 ```
-```markdown
-## Design Contract
-- Profile: design-locks/<profile>.md
-- Must keep: profile hex values, typography hierarchy, layout grammar
-- May adapt: layout families to match proof objects
-- Must avoid: gradients, generic card grids, invented logos, unsupported metrics
-```
+
+**这是真正的 lock 时刻。** 颜色层 + 结构层都由用户明确选定后，生成过程不得引入任何未在 Design Contract 中声明的颜色、字体或效果。
 
 ### Step 5.5 — AI Background Image (Optional)
 
