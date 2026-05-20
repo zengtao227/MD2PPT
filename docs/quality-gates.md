@@ -1,0 +1,135 @@
+# MD2PPT Quality Gates
+
+Every deck produced by the `deck-builder` pipeline must pass all four gates before being declared done. These gates apply regardless of output format (PPTX or HTML) and regardless of generation engine (Codex Presentations, pptxgenjs, guizang-ppt-skill, html-ppt-skill).
+
+---
+
+## Gate 1 — Content Gate
+
+**Purpose:** Ensure the deck argues a thesis, not dumps information.
+
+Checked after `deck.md` is written and before generation begins.
+
+| Check | Pass Condition | Failure Action |
+|-------|---------------|----------------|
+| Thesis present | One-sentence thesis exists in `deck.md` | Write thesis before proceeding |
+| Every slide has a claim | Slide title is a conclusion sentence, not a topic label | Rewrite title as a claim |
+| Every slide has one proof object | Chart, diagram, table, big number, case, or quote — not multiple | Remove secondary proof objects to speaker notes |
+| Every metric has a source | Source is cited or marked "missing" — not inferred | Mark as "missing" or add attribution |
+| No fabricated data | No metric, company name, or logo that cannot be verified | Replace with "pending measurement" or omit |
+| Missing info is explicit | Anything unavailable is listed in `deck.md` `## Omissions` | Add to Omissions section |
+| Appendix material is separated | Background context the audience already knows is in appendix, not main deck | Move to appendix or speaker notes |
+
+**Minimum evidence:** Reviewer (human or agent) can point to the thesis and the per-slide claim for every slide.
+
+---
+
+## Gate 2 — Design Gate
+
+**Purpose:** Ensure the visual contract is respected throughout the deck.
+
+Checked after generation, before render QA.
+
+| Check | Pass Condition | Failure Action |
+|-------|---------------|----------------|
+| Design profile selected | One profile from `design-profiles/` is declared in `## Design Contract` | Select profile and append Design Contract block |
+| Hex values respected | No color outside the profile's palette is introduced | Return to profile-defined palette |
+| Typography respected | Font families and weight hierarchy match the profile | Correct to profile fonts |
+| No gradients or shadows not in profile | Flat color system maintained unless profile explicitly allows depth | Remove unapproved effects |
+| Layout variety maintained | No same major layout on 3+ consecutive slides | Break pattern with different layout family |
+| No generic 3-up card grid | Each slide has a layout that matches its proof object type | Replace with claim-focused layout from `layout-vocabulary.md` |
+| Chart annotation style | Direct annotation used; legend minimized or removed | Add direct labels, remove or reduce legend |
+| Architecture diagrams use editable shapes | No screenshot used where editable shapes are required | Rebuild as native shapes + connectors |
+
+**Minimum evidence:** `## Design Contract` block is present in `deck.md` with profile, must-keep, and must-avoid fields.
+
+---
+
+## Gate 3 — Render Gate
+
+**Purpose:** Confirm the generated output actually looks correct and is editable.
+
+Checked after generation — mandatory before declaring done.
+
+### PPTX Render Gate
+
+| Check | Pass Condition | Failure Action |
+|-------|---------------|----------------|
+| Per-slide preview images exist | At least one render pass completed | Re-render before declaring done |
+| Contact sheet generated | Thumbnail grid of all slides exists | Generate contact sheet |
+| Text overflow absent | No title wraps to a third line; no body text clips container | Fix text box size or reduce copy |
+| Footer / page number clear | Footer does not collide with content area | Adjust layout margins |
+| All text is editable | No text is rasterized or embedded as image | Rebuild as native text boxes |
+| All shapes are native objects | No shape is an embedded screenshot where editability is expected | Rebuild as native shapes |
+| At least one fix cycle completed | At minimum one issue was identified and fixed after first render | Do not skip the fix cycle |
+
+### HTML Render Gate
+
+| Check | Pass Condition | Failure Action |
+|-------|---------------|----------------|
+| Browser test completed | HTML opened in browser and verified | Open and inspect before declaring done |
+| 16:9 aspect ratio correct | Slides render at correct ratio in full-screen mode | Fix CSS or slide dimensions |
+| Text overflow absent | No text clips or wraps unexpectedly | Fix font size or container width |
+| Visual rhythm consistent | No abrupt style break between slides | Check section openers and content slides |
+| Draft / preview HTML vs `outputs/*.html` not confused | Final output is in `outputs/`, not a temporary draft or preview location | Verify file path |
+
+**Minimum evidence:** Contact sheet path (PPTX) or browser screenshot (HTML) included in completion report.
+
+---
+
+## Gate 4 — Output Gate
+
+**Purpose:** Confirm final files are correctly located and deliverable.
+
+Checked last, after render gate passes.
+
+| Check | Pass Condition | Failure Action |
+|-------|---------------|----------------|
+| Final PPTX at correct path | `outputs/<deck-title>.pptx` exists | Move or rename file |
+| Final HTML at correct path | `outputs/<deck-title>.html` exists (if HTML output was selected) | Move or rename file |
+| `deck.md` saved | Source of truth file is committed or saved | Save before closing |
+| Sidecar artifacts saved | `slide-plan.md`, contact sheet, QA notes retained for traceability | Save in project workspace |
+| Remaining risks documented | Any known open issues stated in completion report | Write risk list before handing off |
+
+**Minimum evidence:** Final completion report includes: output file absolute path, render evidence, remaining risks for human review.
+
+---
+
+## Unacceptable Outputs — Examples
+
+These patterns are automatic gate failures. Do not declare done if any are present.
+
+| Pattern | Gate | Why It Fails |
+|---------|------|-------------|
+| Slide title is "Market Analysis" | Content Gate | Topic label, not a conclusion claim |
+| Metric "grew 40% YoY" with no source | Content Gate | Unverified — must cite or mark missing |
+| 4 consecutive slides with three-panel layout | Design Gate | Layout variety rule violated |
+| New gradient introduced mid-deck | Design Gate | Profile violation |
+| Text box rasterized as image | Render Gate | Not editable in PowerPoint |
+| Architecture diagram is a screenshot | Render Gate | Cannot be edited by user |
+| `outputs/deck.html` is a temporary draft or preview artifact | Output Gate | Non-final artifact confused with final output |
+| No contact sheet or browser screenshot | Render Gate | No render evidence |
+
+---
+
+## Applying Gates Across Output Types
+
+| Gate | PPTX Required | HTML Required | Notes |
+|------|--------------|---------------|-------|
+| Content Gate | Yes | Yes | Same `deck.md` is source for both |
+| Design Gate | Yes | Yes | Profile applies to both; CSS variables for HTML |
+| Render Gate | Yes — contact sheet | Yes — browser screenshot | Evidence format differs |
+| Output Gate | Yes | Yes | Output paths differ; same completion report |
+
+---
+
+## Source References
+
+These gates consolidate checks previously scattered across:
+
+- `skills/deck-builder/SKILL.md` — Step 7 Render QA checklist
+- `skills/deck-builder/references/prompt-templates.md` — Render QA Checklist section
+- `skills/deck-builder/references/slide-planner.md` — Common Planning Mistakes
+- `skills/deck-builder/references/source-to-deck.md` — Quality Gates Before Handing to Generation
+- `skills/deck-builder/references/engineering-project-deck.md` — Quality Gates Before Handing to Generation
+- `skills/deck-builder/references/design-workflow.md` — Anti-Patterns to Enforce

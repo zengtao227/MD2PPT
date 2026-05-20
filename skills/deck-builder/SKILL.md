@@ -79,7 +79,7 @@ Resolve dependencies in this order:
 | `design-profiles/` | Use the current repo's `design-profiles/` if present. If absent, use a lightweight visual contract written directly in `deck.md` and do not cite a missing profile file. |
 | PPTX fallback | Use `skills/pptx/SKILL.md` only when it exists in the current repo. If absent, do not pretend the fallback is available. |
 | HTML engines | Use `guizang-ppt-skill` or `html-ppt-skill` only when the skill/tool is available in the active environment. If neither is available, explain the missing dependency or generate only the handoff prompt. |
-| MD2PPT docs | Treat `docs/pptx-master-workflow.md` as optional context. Outside MD2PPT, rely on this skill's reference files instead. |
+| MD2PPT docs | Treat `docs/pptx-master-workflow.md` and `docs/quality-gates.md` as optional project-level context. Outside MD2PPT, rely on this skill's reference files and the minimum QA checklist below instead. |
 
 Never include file paths in a generation prompt unless those files actually exist.
 
@@ -203,12 +203,14 @@ Read `references/prompt-templates.md` for ready-to-use prompts.
 
 ### Step 7 — Render QA
 
-Required before declaring done:
-- [ ] Per-slide preview images rendered (or browser preview for HTML)
-- [ ] Contact sheet generated
+Full gate definitions inside MD2PPT: `docs/quality-gates.md`. If that file is unavailable, apply this minimum checklist before declaring done:
+
+- [ ] Per-slide preview images rendered (or browser screenshot for HTML)
+- [ ] Contact sheet generated (PPTX) or browser full-screen test completed (HTML)
 - [ ] Layout JSON reviewed (overflow, font issues, spacing)
 - [ ] At least one "find issue → fix → re-render" cycle completed
 - [ ] Final output confirmed at `outputs/<deck-title>.pptx` or `outputs/<deck-title>.html`
+- [ ] Completion report includes: output path, render evidence, remaining risks
 
 ---
 
