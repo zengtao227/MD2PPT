@@ -1,3 +1,22 @@
+---
+profile: guizang-indigo
+suitable_for:
+  - Technical proposal or specification
+  - Data report or analytics deck
+  - AI / ML project introduction
+  - Competition defense or thesis defense
+  - Research presentation
+tone: technical, research-oriented, data-driven, scholarly
+formality: medium-high
+density: high
+color_scheme: Deep navy ink (0a1f3d) on cool paper (f1f3f5) — cold, academic, high-information density
+avoid_for:
+  - Warm narrative or editorial decks
+  - Consumer-facing or brand content
+  - Casual internal presentations
+  - Decks where approachability is the primary goal
+---
+
 # 归藏靛蓝瓷（Guizang Indigo Porcelain）
 
 > 来源：nexu-io/open-design · deck-guizang-editorial
@@ -15,7 +34,7 @@
 | paper-tint | `e4e8ec` | 卡片背景、次要区域 |
 | ink-tint | `152a4a` | 深色辅助块 |
 
-**pptxgenjs 颜色参数**（去掉 # 号）：
+**生成工具颜色参数**（去掉 # 号）：
 - 背景：`f1f3f5`
 - 主标题文字：`0a1f3d`
 - 正文文字：`152a4a`
@@ -60,7 +79,7 @@
 
 ---
 
-## pptxgenjs 快速参数模板
+## JS token 快速参数模板
 
 ```javascript
 const INDIGO = {

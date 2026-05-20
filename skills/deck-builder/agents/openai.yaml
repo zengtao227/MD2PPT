@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deck Builder"
+  short_description: "Plan and route professional deck generation"
+  default_prompt: "Use $deck-builder to turn my source material into a planned, designed presentation deck."

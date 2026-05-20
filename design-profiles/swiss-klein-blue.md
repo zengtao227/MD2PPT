@@ -1,3 +1,21 @@
+---
+profile: swiss-klein-blue
+suitable_for:
+  - Business plan
+  - Product roadmap
+  - Competition defense
+  - Execution report
+  - Investor pitch
+tone: authoritative, precise, professional
+formality: high
+density: medium
+color_scheme: Klein Blue accent (002FA7) on warm white (fafaf8) — high contrast, two-color minimal palette
+avoid_for:
+  - Culture decks or casual internal reports
+  - Warm editorial / narrative presentations
+  - Decks where the brand color is not blue
+---
+
 # 瑞士国际主义 · Klein Blue（Swiss International IKB）
 
 > 来源：nexu-io/open-design · deck-swiss-international
@@ -17,7 +35,7 @@
 | gray-light | `f0f0ee` | 卡片背景、次要区域 |
 | gray-mid | `6b6b6b` | 次要文字、注释 |
 
-**pptxgenjs 颜色参数**（去掉 # 号）：
+**生成工具颜色参数**（去掉 # 号）：
 - 背景：`fafaf8`
 - 主标题文字：`0a0a0a`
 - 正文文字：`1a1a1a`
@@ -52,7 +70,7 @@
 
 ---
 
-## 22 种版式参考（对应 pptxgenjs 布局）
+## 22 种版式参考（对应可编辑 PPTX 布局）
 
 | 编号 | 版式名 | 适用内容 |
 |------|--------|---------|
@@ -83,7 +101,7 @@
 
 ---
 
-## pptxgenjs 快速参数模板
+## JS token 快速参数模板
 
 ```javascript
 const SWISS_IKB = {

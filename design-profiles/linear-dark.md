@@ -1,3 +1,21 @@
+---
+profile: linear-dark
+suitable_for:
+  - SaaS product introduction
+  - Technical platform deck
+  - Investor deck (tech-forward audience)
+  - Engineering demo or architecture review
+tone: engineering precision, modern tech, minimal
+formality: high
+density: medium-high
+color_scheme: Near-black background (08090a) with cold-toned off-white text — dark-mode engineering aesthetic
+avoid_for:
+  - Educational or course presentations
+  - Culture decks or warm narrative content
+  - Business pitches to non-technical executive audiences
+  - Print or poor-projector environments (dark backgrounds lose contrast)
+---
+
 # Linear 深色（Linear Dark）
 
 > 来源：nexu-io/open-design · design-systems/linear-app
@@ -24,7 +42,7 @@
 | border-subtle | `rgba(255,255,255,0.05)` → `1a1b1d` | 超细分割线近似 |
 | success | `27a644` | 状态指示 |
 
-**pptxgenjs 颜色参数**（去掉 # 号）：
+**生成工具颜色参数**（去掉 # 号）：
 - 幻灯片背景：`08090a`
 - 主标题：`f7f8f8`
 - 正文：`d0d6e0`
@@ -67,7 +85,7 @@
 
 ---
 
-## pptxgenjs 快速参数模板
+## JS token 快速参数模板
 
 ```javascript
 const LINEAR_DARK = {

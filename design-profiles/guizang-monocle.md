@@ -1,3 +1,21 @@
+---
+profile: guizang-monocle
+suitable_for:
+  - Business pitch or roadshow
+  - Course presentation or academic defense
+  - Opinion-driven or argument-led deck
+  - Project proposal with narrative arc
+  - Mixed technical + business audience
+tone: narrative, editorial, warm-intellectual
+formality: medium
+density: medium
+color_scheme: Near-black ink (0a0a0b) on warm paper (f1efea) — editorial warmth, strong text-on-paper contrast
+avoid_for:
+  - Pure engineering or data-heavy decks (use guizang-indigo instead)
+  - Dark-mode preference audiences
+  - Decks requiring a strong brand accent color
+---
+
 # 归藏墨水经典（Guizang Monocle）
 
 > 来源：nexu-io/open-design · deck-guizang-editorial
@@ -15,7 +33,7 @@
 | paper-tint（辅助底色）| `e8e5de` | 卡片背景、次要区域 |
 | ink-tint（深辅色）| `18181a` | 深色辅助块 |
 
-**pptxgenjs 颜色参数**（去掉 # 号）：
+**生成工具颜色参数**（去掉 # 号）：
 - 背景：`f1efea`
 - 主标题文字：`0a0a0b`
 - 正文文字：`18181a`
@@ -32,7 +50,7 @@
 | Body 正文 | `Inter` | `Noto Sans SC` | 无衬线，清晰 |
 | 数字 / 编号 | `Playfair Display Italic` | — | 斜体衬线数字 |
 
-**pptxgenjs fontFace 建议**：
+**fontFace 建议**：
 - 标题（中文内容）：`"Noto Serif SC"`，英文内容：`"Playfair Display"`
 - 正文：`"Noto Sans SC"` / `"Inter"`
 
@@ -51,7 +69,7 @@
 
 ---
 
-## 版式参考（对应 pptxgenjs 布局）
+## 版式参考（对应可编辑 PPTX 布局）
 
 | 版式 | 描述 | 适用内容 |
 |------|------|---------|
@@ -76,7 +94,7 @@
 
 ---
 
-## pptxgenjs 快速参数模板
+## JS token 快速参数模板
 
 ```javascript
 // 封面页

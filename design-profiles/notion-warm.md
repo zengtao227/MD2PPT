@@ -1,3 +1,21 @@
+---
+profile: notion-warm
+suitable_for:
+  - Internal report or status update
+  - Culture deck or team communication
+  - Lightweight presentation or course handout
+  - Casual brief where approachability matters
+tone: approachable, clean, document-like, minimal
+formality: low-medium
+density: low
+color_scheme: Warm white (ffffff) with soft warm surface (f6f5f4) — gentle, paper-like, no strong accent
+avoid_for:
+  - Investor pitches or competitive defense
+  - High-stakes external presentations
+  - Decks requiring a strong visual impact or brand statement
+  - Engineering or data-heavy content (low density will feel sparse)
+---
+
 # Notion 暖白（Notion Warm Minimal）
 
 > 来源：nexu-io/open-design · design-systems/notion
@@ -21,7 +39,7 @@
 | border | `1a` → `e6e6e6` | 分割线（rgba近似）|
 | warm-dark | `31302e` | 深色背景块（用于封面/章节）|
 
-**pptxgenjs 颜色参数**（去掉 # 号）：
+**生成工具颜色参数**（去掉 # 号）：
 - 背景：`ffffff`
 - 主标题：`0d0d0d`
 - 正文：`31302e`
@@ -66,7 +84,7 @@
 
 ---
 
-## pptxgenjs 快速参数模板
+## JS token 快速参数模板
 
 ```javascript
 const NOTION_WARM = {
