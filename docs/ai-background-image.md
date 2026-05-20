@@ -75,7 +75,7 @@ minimal circuit-like geometry, no text, no people,
 1920x1080 presentation cover background
 ```
 
-**guizang-monocle（墨水经典）**
+**guizang-monocle（暖纸叙事）**
 ```
 Warm paper texture with subtle ink wash elements,
 editorial minimal, off-white (#f1efea) and ink tones,
@@ -83,7 +83,7 @@ no text, no people, soft grain texture,
 1920x1080 presentation cover background
 ```
 
-**guizang-indigo（靛蓝瓷）**
+**guizang-indigo（靛蓝学术）**
 ```
 Abstract indigo porcelain texture, cool tech aesthetic,
 deep blue (#0a1f3d) with subtle cerulean highlights,

@@ -277,16 +277,22 @@ Ask the user one question:
 **If user says skip / no:** proceed directly to Step 6.
 
 **If user says yes:** read `docs/ai-background-image.md` for the full protocol, then:
-1. Construct an image prompt from the confirmed design profile's color and style tokens
+1. **Auto-construct the image prompt** — do NOT pass the user's raw instruction to the API. Build a rich DALL-E 3 prompt by combining:
+   - Primary color family from the Design Contract (e.g. "deep indigo blue tones, #0a1f3d")
+   - Mood/style from the confirmed structure lock (e.g. "scholarly, cold-tech aesthetic")
+   - Deck theme/topic extracted from `deck.md` thesis (e.g. "AI infrastructure growth in enterprise")
+   - Fixed technical constraints: "abstract texture, no people, no faces, no text, suitable for 16:9 presentation slide background, high contrast areas reserved for title placement, 1920×1080"
+   - Overlay note: "semi-transparent overlay will be applied — background should be rich in texture but not distracting"
 2. Call DALL-E 3 via OpenAI images API (or Flux/SD if user specifies) — only for cover and section-divider slides
 3. Save generated images to `assets/` in the current project folder
 4. Note image paths — they will be referenced in Step 6 generation prompts
-5. Add a遮罩 (semi-transparent overlay) instruction to the generation prompt to ensure text readability
+5. Add a 遮罩 (semi-transparent overlay, 40–60% opacity, using the profile's background color) instruction to the generation prompt to ensure text readability
 
 Hard constraints (from `docs/ai-background-image.md`):
 - Abstract texture / geometry only — no scenes, people, faces, text
 - Image must use the profile's primary color family
 - Only cover + section-divider slides get background images; content slides do not
+- Always build the full prompt internally — never pass a one-line user instruction directly to the image API
 
 ### Step 6 — Generate
 

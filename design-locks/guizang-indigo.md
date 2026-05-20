@@ -17,7 +17,7 @@ avoid_for:
   - Decks where approachability is the primary goal
 ---
 
-# 归藏靛蓝瓷（Guizang Indigo Porcelain）
+# 靛蓝学术（Academic Indigo）
 
 > 来源：nexu-io/open-design · deck-guizang-editorial
 > 风格：科技 / 研究 / 数据

@@ -16,7 +16,7 @@ avoid_for:
   - Decks requiring a strong brand accent color
 ---
 
-# 归藏墨水经典（Guizang Monocle）
+# 暖纸叙事（Warm Paper）
 
 > 来源：nexu-io/open-design · deck-guizang-editorial
 > 风格：叙事 / 观点 / 通用商业 / 科技
