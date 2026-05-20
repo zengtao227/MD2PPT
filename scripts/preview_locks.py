@@ -20,9 +20,9 @@ LOCKS = [
         "id": "swiss-klein-blue",
         "name": "Swiss · Klein Blue",
         "zh": "瑞士国际主义",
-        "structure_desc": "直边网格 · 强调色块 · 重磅标题 · 无装饰",
-        "suitable": ["商业计划书", "投资人路演", "战略路线图", "品牌发布"],
-        "avoid": ["教学类", "温暖叙事类"],
+        "structure_desc": "权威 · 精准 · 高对比",
+        "suitable": ["商业计划", "产品路线图", "投资人演示", "执行报告"],
+        "avoid": ["文化类", "叙事性演示"],
         "cover_html": """
 <div style="display:flex; height:100%; gap:0; background:#fafaf8;">
   <div style="width:6px; background:#002FA7; flex-shrink:0;"></div>
@@ -63,7 +63,7 @@ LOCKS = [
         "id": "linear-dark",
         "name": "Linear Dark",
         "zh": "工程深色",
-        "structure_desc": "暗底高亮 · 等宽感排版 · 边框分割 · 紧凑精密",
+        "structure_desc": "工程精密 · 现代科技 · 暗色",
         "suitable": ["SaaS 产品", "技术平台", "工程演示", "投资人（技术背景）"],
         "avoid": ["教学类", "文化类"],
         "cover_html": """
@@ -110,9 +110,9 @@ LOCKS = [
         "id": "guizang-indigo",
         "name": "Academic Indigo",
         "zh": "学术靛蓝",
-        "structure_desc": "全幅深色标题带 · 密集信息层 · 注脚体系 · 宋体衬线",
+        "structure_desc": "冷调学术 · 信息密度高 · 研究感",
         "suitable": ["技术方案", "数据报告", "竞赛答辩", "学术研究"],
-        "avoid": ["温暖叙事类", "消费者品牌", "轻量内部汇报"],
+        "avoid": ["温暖叙事类", "消费者品牌"],
         "cover_html": """
 <div style="height:100%; display:flex; flex-direction:column; background:#f1f3f5;">
   <div style="background:#0a1f3d; flex:2.2; padding:20px 26px; display:flex; flex-direction:column; justify-content:flex-end;">
@@ -165,7 +165,7 @@ LOCKS = [
         "id": "guizang-monocle",
         "name": "Warm Paper",
         "zh": "暖纸叙事",
-        "structure_desc": "叙事 · 温暖纸感 · 引言拉出 · 编辑感留白",
+        "structure_desc": "叙事 · 温暖纸感 · 编辑感",
         "suitable": ["路演", "课程汇报", "观点类演示", "项目方案"],
         "avoid": ["纯工程类", "数据密集报告"],
         "cover_html": """
@@ -195,7 +195,7 @@ LOCKS = [
         "id": "notion-warm",
         "name": "Notion Warm",
         "zh": "Notion 暖白",
-        "structure_desc": "亲和 · 极简 · 文档感宽余白 · 块状层级",
+        "structure_desc": "亲和 · 极简 · 文档感",
         "suitable": ["内部汇报", "文化类", "课程讲义", "轻量演示"],
         "avoid": ["投资人演示", "高强度外部场合"],
         "cover_html": """
