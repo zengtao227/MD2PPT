@@ -30,9 +30,11 @@
 ```text
 [1] 内容源
     主题 / 原始文字 / 数据 / 参考资料
+    （也可以从 URL / 文档提炼骨架，见 docs/roadmap.md 1.1）
         ↓
 [2] PPTX slide planner
-    把材料拆成 audience、thesis、arc、slide claims、proof objects
+    先出大纲（页数 + 每页主标题）供确认，再继续
+    （见 docs/roadmap.md 1.2）
         ↓
 [3] deck.md
     写清 thesis、audience、每页 claim、proof object、source
@@ -43,6 +45,11 @@
 [5] 视觉合同
     选 design-profiles/ 中的 Open Design 档案，并形成 deck-brief
         ↓
+[5.5] 可选：AI 背景图生成
+    纯色方案已够用？→ 跳过
+    想要独一无二的封面/章节页背景？→ 调用 DALL-E 3 / Flux 生成
+    （仅封面 + 章节切换页，内容页不用，详见 docs/ai-background-image.md）
+        ↓
 [6] Codex Presentations 生成
     claim spine → design system → contact-sheet plan
     → artifact-tool presentation JSX → render → QA → export PPTX
@@ -51,6 +58,7 @@
     看 contact sheet 和完整预览图，按页反馈，重新渲染验证
         ↓
 [最终] outputs/<主题名>.pptx
+    可选追加：长图导出（见 docs/roadmap.md 1.3）
 ```
 
 这个流程的关键不是“把 Markdown 套模板”，而是先把内容论证写清楚，再把视觉系统锁住，最后让 Presentations 插件按可编辑 PPTX 的方式构建和验证。
@@ -452,17 +460,25 @@ skills/pptx/scripts/thumbnail.py 生成缩略图
 MD2PPT/
 ├── deck.md                          # 内容源：主题、主张、证据、数据来源
 ├── design-profiles/                 # Open Design 派生视觉合同
-│   ├── guizang-monocle.md
-│   ├── guizang-indigo.md
-│   ├── swiss-klein-blue.md
-│   ├── linear-dark.md
-│   └── notion-warm.md
+│   ├── guizang-monocle.md           # 墨水经典，暖纸色底
+│   ├── guizang-indigo.md            # 靛蓝瓷，冷调科技感
+│   ├── swiss-klein-blue.md          # Klein Blue + 瑞士网格
+│   ├── linear-dark.md               # 工程暗色，精准感
+│   └── notion-warm.md               # 暖白极简
+├── assets/                          # AI 生成的背景图（gitignore，临时文件）
+│   └── cover-bg.png                 # 封面背景图（可选步骤生成）
 ├── skills/
 │   ├── pptx/                        # Claude / 本地备用：pptxgenjs 工作流
 │   └── ui-ux-pro-max/               # 设计情报数据库
 ├── docs/
-│   ├── pptx-master-workflow.md      # Codex 主流程
+│   ├── pptx-master-workflow.md      # ← 主流程（你在这里）
+│   ├── ai-background-image.md       # 可选：AI 背景图生成说明
+│   ├── roadmap.md                   # 后续开发路线图
+│   ├── competitive-analysis-pi.md   # 竞品分析：pi.inc vs DeepVinci
 │   ├── workflow-with-open-design.md # Open Design 集成说明
-│   └── pptx-generation-schemes.md   # 方案对比
-└── outputs/                         # 最终导出的 PPTX / PDF / HTML
+│   └── pptx-generation-schemes.md  # 方案对比
+└── outputs/                         # 最终导出（gitignore）
+    ├── deck.pptx
+    ├── deck.pdf
+    └── deck-longimage.png           # 可选：长图导出
 ```
