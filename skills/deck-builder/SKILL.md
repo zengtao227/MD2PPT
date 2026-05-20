@@ -188,11 +188,23 @@ Typography (Chinese + Latin) | Chart grammar | UX anti-patterns to avoid
 
 ### Step 5 — Select Visual Contract
 
-Choose one profile from `design-profiles/` as a hard visual constraint.
-Read `references/design-workflow.md` for the selection table.
-For layout names, read `references/layout-vocabulary.md`.
+Read `references/design-workflow.md` for the full selection table.
+Read the `profile:` frontmatter fields in each `design-profiles/*.md` (suitable_for / tone / formality / color_scheme / avoid_for) to match profile to deck context.
 
-Append a `## Design Contract` block to `deck.md`:
+**Selection and confirmation — HARD STOP:**
+
+1. Based on the deck topic, audience, and Step 4 design intelligence, recommend the best-matching profile. Present a short table:
+
+   | 档案 | 推荐理由 | 不适合原因 |
+   |------|---------|----------|
+   | `swiss-klein-blue` | … | … |
+   | `guizang-indigo` | … | … |
+   | _(one more if relevant)_ | … | … |
+
+2. State the recommendation clearly: "我推荐 **X**，因为……"
+3. **STOP. Do not write the Design Contract block, do not proceed to Step 5.5 or Step 6 until the user confirms the profile choice.**
+
+After confirmation, append a `## Design Contract` block to `deck.md`:
 ```markdown
 ## Design Contract
 - Profile: design-profiles/<profile>.md
@@ -200,6 +212,27 @@ Append a `## Design Contract` block to `deck.md`:
 - May adapt: layout families to match proof objects
 - Must avoid: gradients, generic card grids, invented logos, unsupported metrics
 ```
+
+### Step 5.5 — AI Background Image (Optional)
+
+**Trigger this step only after the profile is confirmed.**
+
+Ask the user one question:
+> "需要为封面和章节分隔页生成 AI 背景图吗？现有的纯色方案够用就可以跳过。"
+
+**If user says skip / no:** proceed directly to Step 6.
+
+**If user says yes:** read `docs/ai-background-image.md` for the full protocol, then:
+1. Construct an image prompt from the confirmed design profile's color and style tokens
+2. Call DALL-E 3 via OpenAI images API (or Flux/SD if user specifies) — only for cover and section-divider slides
+3. Save generated images to `assets/` in the current project folder
+4. Note image paths — they will be referenced in Step 6 generation prompts
+5. Add a遮罩 (semi-transparent overlay) instruction to the generation prompt to ensure text readability
+
+Hard constraints (from `docs/ai-background-image.md`):
+- Abstract texture / geometry only — no scenes, people, faces, text
+- Image must use the profile's primary color family
+- Only cover + section-divider slides get background images; content slides do not
 
 ### Step 6 — Generate
 
