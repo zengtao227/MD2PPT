@@ -180,41 +180,44 @@ Rules:
 
 Run `design-consultant` (scripts: `skills/ui-ux-pro-max/scripts/search.py`). Read `references/design-workflow.md` for query protocol.
 
-**Present 2–3 palette options with visible colors — HARD STOP:**
+**Present 2–3 palette options via HTML preview — HARD STOP:**
 
-After running design-consultant, present options as a visual color table. For each option show actual hex swatches in an HTML block, not just hex codes:
+After running design-consultant, do NOT present palettes as terminal text only. Instead:
 
-```html
-<!-- Generate assets/palette-preview.html and tell user to open it in browser -->
-<!-- Each option shows: background · primary text · accent · muted as color blocks -->
+1. Write `assets/palettes.json` with the 2–3 options in this exact format:
+```json
+[
+  {
+    "id": "A",
+    "name": "风格名称",
+    "bg": "#hex",
+    "text": "#hex",
+    "accent": "#hex",
+    "muted": "#hex",
+    "font_zh": "思源黑体",
+    "font_en": "Inter",
+    "mood": "情绪描述",
+    "lock": "recommended-lock-id"
+  }
+]
 ```
 
-Format each option like this in the response:
-
-```
-方案 A — [风格名称]
-  背景   ████ #fafaf8   正文   ████ #0a0a0a
-  强调色 ████ #002FA7   辅助   ████ #6b6b6b
-  字体: Source Han Sans + Inter
-  情绪: 权威、精准、高对比
-  推荐 lock: swiss-klein-blue（结构层）
-
-方案 B — [风格名称]
-  背景   ████ #f1f3f5   正文   ████ #0a1f3d
-  强调色 ████ #4a7fc1   辅助   ████ #8a9ab0
-  字体: 思源宋体 + IBM Plex Sans
-  情绪: 学术、冷调、信息密度高
-  推荐 lock: guizang-indigo（结构层）
+2. Run the preview script:
+```bash
+python3 scripts/preview_palette.py
+# 生成 assets/palette-preview.html
 ```
 
-Note: the `████` blocks are Unicode full blocks — they render as colored rectangles in most terminals. For richer preview, generate `assets/palette-preview.html`.
+3. Tell the user: **"配色方案预览已生成，请在浏览器中打开 `assets/palette-preview.html` 查看真实色彩效果，选择后点击「确认此配色方案」，将确认内容粘贴回来继续。"**
+
+If `scripts/preview_palette.py` is not available (outside MD2PPT repo), fall back to terminal text with `████` Unicode blocks — but always note the limitation.
 
 **Consultation is iterative:**
 - User can say "我想要更暖的色调" / "强调色换成橙色" / "更深的背景"
-- Adjust and re-present until user is satisfied
+- Update `palettes.json` and re-run the script each iteration — the browser auto-refreshes on reload
 - User can also ask for a mood board image (DALL-E 3) to preview the overall visual feel
 
-**STOP. Do not proceed to Step 5 until user explicitly says they are satisfied with a palette direction.**
+**STOP. Do not proceed to Step 5 until user explicitly confirms a palette by pasting their selection.**
 
 The output of Step 4 is:
 - Confirmed color palette (hex values, semantic roles)
