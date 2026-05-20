@@ -446,9 +446,9 @@ def main() -> None:
     assets_dir.mkdir(exist_ok=True)
     out = assets_dir / "locks-preview.html"
 
+    _keep = {"id", "name", "zh", "structure_desc", "suitable", "avoid", "cover_html", "slide_html"}
     locks_data = [
-        {k: v for k, v in lock.items()
-         if k in ("id", "name", "zh", "structure_desc", "slide_html")}
+        {k: v for k, v in lock.items() if k in _keep}
         for lock in LOCKS
     ]
     html = HTML_TEMPLATE.format(locks_json=_json.dumps(locks_data, ensure_ascii=False))
