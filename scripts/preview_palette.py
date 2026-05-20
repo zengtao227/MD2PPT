@@ -1,311 +1,578 @@
 #!/usr/bin/env python3
 """
-Generate assets/palette-preview.html from assets/palettes.json.
+Generate assets/palette-preview.html.
 
-Claude writes palettes.json during Step 4, then calls this script.
-User opens the HTML, clicks a palette, hits confirm — selection is
+Shows Claude's selected palettes (from assets/palettes.json) at the top,
+followed by a full browsable library of 25 curated palettes with category
+filter tabs.  User clicks any palette, then confirms — selection is
 auto-copied to clipboard.
 
-palettes.json format:
-[
-  {
-    "id": "A",
-    "name": "深海科技",
-    "bg":     "#0b1527",
-    "text":   "#c8d5e8",
-    "accent": "#5E6AD2",
-    "muted":  "#7a8ba0",
-    "font_zh": "思源黑体",
-    "font_en": "Inter",
-    "mood":   "工程感强、AI 科技、答辩专业",
-    "lock":   "linear-dark"
-  },
-  ...
-]
+Usage:
+    python3 scripts/preview_palette.py
+    # then open: assets/palette-preview.html
 """
 
 import json
 import sys
 from pathlib import Path
 
+# ── Built-in palette library ────────────────────────────────────────────────
+# 25 curated palettes across 5 categories.
+# lock: recommended structure lock for each palette.
 
-HTML_TEMPLATE = """<!DOCTYPE html>
+PALETTE_LIBRARY = [
+    # ── 企业权威 corporate ──────────────────────────────────────────────────
+    {
+        "id": "lib-klein-authority",
+        "name": "Klein Authority",
+        "zh": "克莱因权威",
+        "category": "corporate",
+        "bg": "#fafaf8", "text": "#0a0a0a", "accent": "#002FA7", "muted": "#6b6b6b",
+        "font_zh": "思源黑体", "font_en": "Inter",
+        "mood": "权威 · 精准 · 高对比",
+        "lock": "swiss-klein-blue",
+    },
+    {
+        "id": "lib-navy-executive",
+        "name": "Navy Executive",
+        "zh": "深海蓝执行力",
+        "category": "corporate",
+        "bg": "#f8f9fb", "text": "#0a1628", "accent": "#1d4ed8", "muted": "#64748b",
+        "font_zh": "思源黑体", "font_en": "Inter",
+        "mood": "专业 · 信赖感 · 企业蓝",
+        "lock": "swiss-klein-blue",
+    },
+    {
+        "id": "lib-gold-corporate",
+        "name": "Cold Gold",
+        "zh": "冷金权威",
+        "category": "corporate",
+        "bg": "#f5f4f0", "text": "#0a1f3d", "accent": "#C9A227", "muted": "#6b7280",
+        "font_zh": "思源宋体", "font_en": "IBM Plex Sans",
+        "mood": "高端品牌感 · 稳重权威 · 金调对比",
+        "lock": "guizang-indigo",
+    },
+    {
+        "id": "lib-charcoal-elite",
+        "name": "Charcoal Elite",
+        "zh": "炭黑精英",
+        "category": "corporate",
+        "bg": "#fafafa", "text": "#111827", "accent": "#374151", "muted": "#9ca3af",
+        "font_zh": "思源黑体", "font_en": "Inter",
+        "mood": "极简权威 · 黑白对比 · 国际感",
+        "lock": "swiss-klein-blue",
+    },
+    {
+        "id": "lib-crimson-authority",
+        "name": "Crimson Authority",
+        "zh": "深红权威",
+        "category": "corporate",
+        "bg": "#fafafa", "text": "#1a0a0a", "accent": "#9B1C1C", "muted": "#6b7280",
+        "font_zh": "思源黑体", "font_en": "Inter",
+        "mood": "强势 · 决断力 · 红调品牌",
+        "lock": "swiss-klein-blue",
+    },
+    # ── 科技工程 tech ───────────────────────────────────────────────────────
+    {
+        "id": "lib-engineering-dark",
+        "name": "Engineering Dark",
+        "zh": "工程深色",
+        "category": "tech",
+        "bg": "#08090a", "text": "#f7f8f8", "accent": "#5e6ad2", "muted": "#8a8f98",
+        "font_zh": "思源黑体", "font_en": "Inter",
+        "mood": "工程精密 · 现代科技 · 暗色",
+        "lock": "linear-dark",
+    },
+    {
+        "id": "lib-deep-ocean",
+        "name": "Deep Ocean",
+        "zh": "深海科技",
+        "category": "tech",
+        "bg": "#0b1527", "text": "#c8d5e8", "accent": "#5E6AD2", "muted": "#7a8ba0",
+        "font_zh": "思源黑体", "font_en": "Inter",
+        "mood": "工程感 · AI 科技 · 沉浸深蓝",
+        "lock": "linear-dark",
+    },
+    {
+        "id": "lib-nebula-purple",
+        "name": "Nebula Purple",
+        "zh": "星云紫境",
+        "category": "tech",
+        "bg": "#0a0a0f", "text": "#EDEDEF", "accent": "#7C3AED", "muted": "#8A8F98",
+        "font_zh": "思源黑体", "font_en": "Plus Jakarta Sans",
+        "mood": "AI 未来感 · 沉浸感强 · 视觉冲击",
+        "lock": "linear-dark",
+    },
+    {
+        "id": "lib-matrix-green",
+        "name": "Matrix Green",
+        "zh": "绿色矩阵",
+        "category": "tech",
+        "bg": "#0a0f0d", "text": "#d4f0e4", "accent": "#10b981", "muted": "#52796f",
+        "font_zh": "思源黑体", "font_en": "Inter",
+        "mood": "Terminal 感 · 代码美学 · 生物科技",
+        "lock": "linear-dark",
+    },
+    {
+        "id": "lib-midnight-teal",
+        "name": "Midnight Teal",
+        "zh": "午夜青色",
+        "category": "tech",
+        "bg": "#050e12", "text": "#cceeff", "accent": "#0891b2", "muted": "#5a8fa0",
+        "font_zh": "思源黑体", "font_en": "Plus Jakarta Sans",
+        "mood": "沉静科技感 · 数据可视化 · 深色清凉",
+        "lock": "linear-dark",
+    },
+    # ── 学术研究 academic ───────────────────────────────────────────────────
+    {
+        "id": "lib-academic-indigo",
+        "name": "Academic Indigo",
+        "zh": "靛蓝学术",
+        "category": "academic",
+        "bg": "#f1f3f5", "text": "#0a1f3d", "accent": "#0a1f3d", "muted": "#4a6080",
+        "font_zh": "思源宋体", "font_en": "IBM Plex Sans",
+        "mood": "冷调学术 · 信息密度高 · 研究感",
+        "lock": "guizang-indigo",
+    },
+    {
+        "id": "lib-prussian-research",
+        "name": "Prussian Research",
+        "zh": "普鲁士蓝研究",
+        "category": "academic",
+        "bg": "#eef2ff", "text": "#1e3a5f", "accent": "#1e40af", "muted": "#64748b",
+        "font_zh": "思源宋体", "font_en": "IBM Plex Sans",
+        "mood": "学术蓝 · 严谨 · 高校报告感",
+        "lock": "guizang-indigo",
+    },
+    {
+        "id": "lib-ink-scholar",
+        "name": "Ink Scholar",
+        "zh": "墨水学者",
+        "category": "academic",
+        "bg": "#f8f8f6", "text": "#1a1a2e", "accent": "#16213e", "muted": "#6b7280",
+        "font_zh": "思源宋体", "font_en": "IBM Plex Sans",
+        "mood": "黑白学术 · 极简严肃 · 论文感",
+        "lock": "guizang-indigo",
+    },
+    {
+        "id": "lib-arctic-study",
+        "name": "Arctic Study",
+        "zh": "北极研究蓝",
+        "category": "academic",
+        "bg": "#f0f4f8", "text": "#0a2540", "accent": "#1a4480", "muted": "#52748c",
+        "font_zh": "思源黑体", "font_en": "IBM Plex Sans",
+        "mood": "冷静 · 系统感 · 国际学术机构",
+        "lock": "guizang-indigo",
+    },
+    {
+        "id": "lib-slate-academic",
+        "name": "Slate Academic",
+        "zh": "板岩学术",
+        "category": "academic",
+        "bg": "#f4f6f8", "text": "#1e293b", "accent": "#475569", "muted": "#94a3b8",
+        "font_zh": "思源黑体", "font_en": "Inter",
+        "mood": "低调专业 · 数据报告 · 中性学术",
+        "lock": "guizang-indigo",
+    },
+    # ── 叙事温暖 narrative ──────────────────────────────────────────────────
+    {
+        "id": "lib-warm-paper",
+        "name": "Warm Paper",
+        "zh": "暖纸叙事",
+        "category": "narrative",
+        "bg": "#f1efea", "text": "#0a0a0b", "accent": "#0a0a0b", "muted": "#5a5650",
+        "font_zh": "思源宋体", "font_en": "IBM Plex Sans",
+        "mood": "叙事 · 温暖纸感 · 编辑感",
+        "lock": "guizang-monocle",
+    },
+    {
+        "id": "lib-sand-editorial",
+        "name": "Sand Editorial",
+        "zh": "沙色编辑",
+        "category": "narrative",
+        "bg": "#f5f0e8", "text": "#1a1208", "accent": "#6b4c11", "muted": "#7a6a54",
+        "font_zh": "思源宋体", "font_en": "IBM Plex Sans",
+        "mood": "自然 · 手工质感 · 策略报告",
+        "lock": "guizang-monocle",
+    },
+    {
+        "id": "lib-terracotta",
+        "name": "Terracotta Story",
+        "zh": "陶土叙事",
+        "category": "narrative",
+        "bg": "#faf3ed", "text": "#2d1b0e", "accent": "#b5533c", "muted": "#8b6355",
+        "font_zh": "思源宋体", "font_en": "Plus Jakarta Sans",
+        "mood": "温暖品牌 · 文化创意 · 有温度",
+        "lock": "guizang-monocle",
+    },
+    {
+        "id": "lib-cream-literary",
+        "name": "Cream Literary",
+        "zh": "奶油文学",
+        "category": "narrative",
+        "bg": "#fdf8f0", "text": "#2c2416", "accent": "#8b6914", "muted": "#9a8870",
+        "font_zh": "思源宋体", "font_en": "IBM Plex Sans",
+        "mood": "文学感 · 人文气质 · 课程讲义",
+        "lock": "guizang-monocle",
+    },
+    {
+        "id": "lib-forest-narrative",
+        "name": "Forest Narrative",
+        "zh": "森林叙事",
+        "category": "narrative",
+        "bg": "#f2f4f0", "text": "#1a2618", "accent": "#2d5a27", "muted": "#6b7c68",
+        "font_zh": "思源宋体", "font_en": "Plus Jakarta Sans",
+        "mood": "自然 · 可持续 · ESG 报告",
+        "lock": "guizang-monocle",
+    },
+    # ── 极简文档 minimal ────────────────────────────────────────────────────
+    {
+        "id": "lib-notion-classic",
+        "name": "Notion Classic",
+        "zh": "Notion 经典",
+        "category": "minimal",
+        "bg": "#ffffff", "text": "#0d0d0d", "accent": "#37352f", "muted": "#615d59",
+        "font_zh": "思源黑体", "font_en": "Inter",
+        "mood": "亲和 · 极简 · 文档感",
+        "lock": "notion-warm",
+    },
+    {
+        "id": "lib-soft-linen",
+        "name": "Soft Linen",
+        "zh": "亚麻极简",
+        "category": "minimal",
+        "bg": "#fafaf8", "text": "#1a1a1a", "accent": "#2d2d2d", "muted": "#737373",
+        "font_zh": "思源黑体", "font_en": "Inter",
+        "mood": "柔和 · 无压感 · 内部汇报",
+        "lock": "notion-warm",
+    },
+    {
+        "id": "lib-warm-minimal",
+        "name": "Warm Minimal",
+        "zh": "温白极简",
+        "category": "minimal",
+        "bg": "#fffef9", "text": "#111111", "accent": "#44403c", "muted": "#78716c",
+        "font_zh": "思源黑体", "font_en": "Inter",
+        "mood": "温暖白底 · 轻量演示 · 文化类",
+        "lock": "notion-warm",
+    },
+    {
+        "id": "lib-paper-light",
+        "name": "Paper Light",
+        "zh": "纸光极简",
+        "category": "minimal",
+        "bg": "#f9f9f7", "text": "#1c1c1c", "accent": "#404040", "muted": "#888888",
+        "font_zh": "思源黑体", "font_en": "Inter",
+        "mood": "轻盈 · 高可读性 · 课程讲义",
+        "lock": "notion-warm",
+    },
+    {
+        "id": "lib-cloud-white",
+        "name": "Cloud White",
+        "zh": "云白",
+        "category": "minimal",
+        "bg": "#f7f8fa", "text": "#1a1d23", "accent": "#343a40", "muted": "#868e96",
+        "font_zh": "思源黑体", "font_en": "Inter",
+        "mood": "清爽 · 科技文档 · 产品说明",
+        "lock": "notion-warm",
+    },
+]
+
+CATEGORY_LABELS = {
+    "all":       "全部",
+    "corporate": "企业权威",
+    "tech":      "科技工程",
+    "academic":  "学术研究",
+    "narrative": "叙事温暖",
+    "minimal":   "极简文档",
+}
+
+# ── HTML template ────────────────────────────────────────────────────────────
+
+HTML = """<!DOCTYPE html>
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<title>Step 4 — 配色方案预览</title>
+<title>Step 4 — 配色方案</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #eceae6;
-  min-height: 100vh;
-  padding: 28px 24px 48px;
-  color: #1a1a1a;
-}
-h1 { font-size: 20px; font-weight: 700; color: #111; margin-bottom: 4px; }
-.subtitle { font-size: 13px; color: #666; margin-bottom: 28px; line-height: 1.5; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#eceae6;min-height:100vh;padding:28px 24px 56px;color:#1a1a1a}
+h1{font-size:20px;font-weight:700;color:#111;margin-bottom:4px}
+.subtitle{font-size:13px;color:#666;margin-bottom:28px;line-height:1.5}
+.section-title{font-size:13px;font-weight:700;color:#555;letter-spacing:.5px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.section-title::after{content:"";flex:1;height:1px;background:#d0ccc8}
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-}
+/* Category filter */
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.filter-btn{padding:6px 14px;border-radius:20px;border:1.5px solid #ccc;background:white;font-size:12px;font-weight:600;color:#555;cursor:pointer;transition:all .15s}
+.filter-btn:hover{border-color:#888;color:#222}
+.filter-btn.active{background:#0061FF;border-color:#0061FF;color:white}
 
-.palette-card {
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0,0,0,.08), 0 2px 10px rgba(0,0,0,.05);
-  cursor: pointer;
-  transition: box-shadow .18s, transform .18s;
-  user-select: none;
-  border: 2px solid transparent;
-}
-.palette-card:hover {
-  box-shadow: 0 4px 20px rgba(0,0,0,.14);
-  transform: translateY(-2px);
-}
-.palette-card.selected {
-  border-color: #0061FF;
-  box-shadow: 0 0 0 3px rgba(0,97,255,.15), 0 4px 20px rgba(0,0,0,.12);
-  transform: translateY(-2px);
-}
+/* Palette grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin-bottom:24px}
 
-/* Mini slide preview */
-.slide-preview {
-  width: 100%;
-  aspect-ratio: 16/9;
-  overflow: hidden;
-  position: relative;
-}
+/* Palette card */
+.pcard{background:white;border-radius:10px;overflow:hidden;cursor:pointer;transition:box-shadow .18s,transform .18s;border:2px solid transparent;user-select:none}
+.pcard:hover{box-shadow:0 4px 18px rgba(0,0,0,.13);transform:translateY(-2px)}
+.pcard.selected{border-color:#0061FF;box-shadow:0 0 0 3px rgba(0,97,255,.12),0 4px 18px rgba(0,0,0,.1);transform:translateY(-2px)}
+.pcard.hidden{display:none}
 
-/* Color swatches row */
-.swatches {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  background: #eee;
-  border-top: 1px solid #eee;
-  border-bottom: 1px solid #eee;
-}
-.swatch {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: white;
-}
-.swatch-dot {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  flex-shrink: 0;
-  border: 1px solid rgba(0,0,0,.08);
-}
-.swatch-info { min-width: 0; }
-.swatch-role { font-size: 9px; color: #999; text-transform: uppercase; letter-spacing: .5px; }
-.swatch-hex { font-size: 11px; font-weight: 600; color: #333; font-family: monospace; }
+/* Mini slide */
+.slide-wrap{width:100%;aspect-ratio:16/9;overflow:hidden}
 
-/* Meta section */
-.meta { padding: 12px 14px 14px; }
-.palette-id {
-  display: inline-block;
-  font-size: 10px; font-weight: 700;
-  background: #f0f0ee; color: #555;
-  padding: 2px 8px; border-radius: 12px;
-  margin-bottom: 6px; letter-spacing: .5px;
-}
-.palette-name { font-size: 15px; font-weight: 700; color: #111; margin-bottom: 4px; }
-.palette-font { font-size: 11px; color: #777; margin-bottom: 4px; }
-.palette-mood {
-  font-size: 11px; color: #444; line-height: 1.5;
-  border-left: 2px solid #ddd; padding-left: 8px;
-}
-.lock-badge {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 10px; color: #0061FF; font-weight: 600;
-  margin-top: 8px;
-  background: #EEF3FF; padding: 3px 9px; border-radius: 12px;
-}
+/* Swatches */
+.swatches{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#eee;border-top:1px solid #eee;border-bottom:1px solid #eee}
+.sw{display:flex;align-items:center;gap:7px;padding:6px 10px;background:white}
+.sw-dot{width:18px;height:18px;border-radius:4px;flex-shrink:0;border:1px solid rgba(0,0,0,.08)}
+.sw-role{font-size:8.5px;color:#999;text-transform:uppercase;letter-spacing:.4px}
+.sw-hex{font-size:10.5px;font-weight:600;color:#333;font-family:monospace}
 
-.select-btn {
-  display: block; width: calc(100% - 28px);
-  margin: 0 14px 14px;
-  padding: 9px;
-  background: #f4f4f2; border: 1px solid #ddd;
-  border-radius: 6px; font-size: 12px; font-weight: 600;
-  color: #333; cursor: pointer; text-align: center;
-  transition: background .12s;
-}
-.select-btn:hover { background: #eaeae8; }
-.palette-card.selected .select-btn {
-  background: #0061FF; color: white; border-color: #0061FF;
-}
+/* Meta */
+.meta{padding:10px 12px 12px}
+.pname{font-size:13px;font-weight:700;color:#111;margin-bottom:1px}
+.pzh{font-size:11px;color:#888;margin-bottom:5px}
+.pmood{font-size:10.5px;color:#444;line-height:1.5;border-left:2px solid #ddd;padding-left:7px;margin-bottom:7px}
+.plock{font-size:10px;color:#0061FF;font-weight:600;background:#EEF3FF;padding:2px 8px;border-radius:10px;display:inline-block}
+.sel-btn{display:block;width:calc(100% - 24px);margin:0 12px 12px;padding:8px;background:#f4f4f2;border:1px solid #ddd;border-radius:6px;font-size:11.5px;font-weight:600;color:#333;cursor:pointer;text-align:center;transition:background .12s}
+.sel-btn:hover{background:#eaeae8}
+.pcard.selected .sel-btn{background:#0061FF;color:white;border-color:#0061FF}
 
-/* Bottom confirm area */
-.confirm-area { display: flex; align-items: center; gap: 14px; margin-top: 8px; }
-.confirm-btn {
-  padding: 11px 28px; background: #0061FF; color: white;
-  border: none; border-radius: 8px; font-size: 14px; font-weight: 700;
-  cursor: pointer; transition: background .15s, transform .1s;
-}
-.confirm-btn:hover { background: #004ee0; transform: translateY(-1px); }
-.confirm-btn.done { background: #16a34a; cursor: default; transform: none; }
-.copied-msg {
-  display: none; font-size: 13px; color: #16a34a; font-weight: 600;
-  padding: 10px 14px; background: #f0fdf4; border-radius: 8px;
-  border: 1px solid #bbf7d0; line-height: 1.5;
-}
-.copied-msg.show { display: block; }
+/* Confirm */
+.confirm-wrap{position:sticky;bottom:0;padding:16px 0 0;display:flex;align-items:center;gap:14px}
+.cbtn{padding:12px 30px;background:#0061FF;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s,transform .1s;box-shadow:0 2px 10px rgba(0,97,255,.3)}
+.cbtn:hover{background:#004ee0;transform:translateY(-1px)}
+.cbtn.done{background:#16a34a;cursor:default;transform:none;box-shadow:none}
+.cmsg{display:none;font-size:13px;color:#16a34a;font-weight:600;padding:10px 14px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;line-height:1.5}
+.cmsg.show{display:block}
+
+/* Showcase drawer — slides up from bottom on selection */
+body{padding-bottom:260px}
+.showcase{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1.5px solid #e0ddd8;box-shadow:0 -6px 32px rgba(0,0,0,.13);padding:16px 24px 18px;transform:translateY(calc(100% + 10px));transition:transform .32s cubic-bezier(.4,0,.2,1);z-index:100}
+.showcase.visible{transform:translateY(0)}
+.sc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sc-title{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.sc-name{font-size:15px;font-weight:700;color:#111}
+.sc-zh{font-size:12px;color:#888}
+.sc-mood{font-size:11px;color:#444;border-left:2px solid #ddd;padding-left:8px;margin-left:4px}
+.sc-close{width:28px;height:28px;border:none;background:#f0f0ee;border-radius:50%;font-size:16px;cursor:pointer;color:#555;flex-shrink:0}
+.sc-slides{display:flex;gap:14px;margin-bottom:12px}
+.sc-col{flex:1;min-width:0}
+.sc-label{font-size:10px;font-weight:600;color:#888;letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px}
+.sc-frame{width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:7px;box-shadow:0 3px 14px rgba(0,0,0,.14)}
+.sc-bottom{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.sc-swatches{display:flex;gap:10px;flex:1;flex-wrap:wrap}
+.sc-sw{display:flex;align-items:center;gap:6px}
+.sc-dot{width:22px;height:22px;border-radius:5px;border:1px solid rgba(0,0,0,.09);flex-shrink:0}
+.sc-swatch-info .sc-hex{font-size:10.5px;font-weight:600;color:#333;font-family:monospace}
+.sc-swatch-info .sc-role{font-size:8.5px;color:#888;text-transform:uppercase;letter-spacing:.4px}
 </style>
 </head>
 <body>
-<h1>Step 4 — 配色方案预览</h1>
-<p class="subtitle">点击卡片选择配色方向，颜色均为真实渲染；确认后自动复制到剪贴板，粘贴给 Claude 继续 Step 5。</p>
-<div class="grid" id="grid"></div>
-<div class="confirm-area">
-  <button class="confirm-btn" id="confirm-btn" onclick="confirmSelection()">确认此配色方案 →</button>
-  <div class="copied-msg" id="copied-msg">
-    ✓ 已复制到剪贴板！<br>粘贴到 Claude / Codex 对话框，然后继续 Step 5。
+<h1>Step 4 — 配色方案选择</h1>
+<p class="subtitle">点击任意配色卡片预览真实效果，选好后点「确认此配色方案」，选择自动复制到剪贴板。</p>
+
+<div id="recommended-section"></div>
+
+<div class="section-title">配色库 — 25 套精选方案</div>
+<div class="filter-row" id="filter-row"></div>
+<div class="grid" id="library-grid"></div>
+
+<!-- Showcase drawer: slides up when a palette is selected -->
+<div class="showcase" id="showcase">
+  <div class="sc-header">
+    <div class="sc-title">
+      <span class="sc-name" id="sc-name"></span>
+      <span class="sc-zh" id="sc-zh"></span>
+      <span class="sc-mood" id="sc-mood"></span>
+    </div>
+    <button class="sc-close" onclick="closeShowcase()">×</button>
+  </div>
+  <div class="sc-slides">
+    <div class="sc-col">
+      <div class="sc-label">封面</div>
+      <div class="sc-frame" id="sc-cover"></div>
+    </div>
+    <div class="sc-col">
+      <div class="sc-label">内页</div>
+      <div class="sc-frame" id="sc-content"></div>
+    </div>
+  </div>
+  <div class="sc-bottom">
+    <div class="sc-swatches" id="sc-swatches"></div>
+    <button class="cbtn" id="cbtn" onclick="confirm_()">确认此配色方案 →</button>
+    <div class="cmsg" id="cmsg">✓ 已复制！粘贴到 Claude 继续 Step 5。</div>
   </div>
 </div>
-<script>
-const PALETTES = PALETTES_JSON;
-let activeId = null;
 
-function fontStack(zh, en) {
-  const zhMap = {
-    '思源黑体': "'Noto Sans SC'",
-    '思源宋体': "'Noto Serif SC'",
-    '黑体': "'Noto Sans SC'",
-    '宋体': "'Noto Serif SC'",
-  };
-  return `${zhMap[zh] || "'Noto Sans SC'"}, '${en}', sans-serif`;
+<script>
+const RECOMMENDED = RECOMMENDED_JSON;
+const LIBRARY = LIBRARY_JSON;
+
+const CATS = {all:"全部",corporate:"企业权威",tech:"科技工程",academic:"学术研究",narrative:"叙事温暖",minimal:"极简文档"};
+let activeCat = "all";
+let selectedId = null;
+
+const FONT_MAP = {"思源黑体":"'Noto Sans SC'","思源宋体":"'Noto Serif SC'","黑体":"'Noto Sans SC'","宋体":"'Noto Serif SC'"};
+function fontStack(zh,en){return`${FONT_MAP[zh]||"'Noto Sans SC'"}, '${en}', sans-serif`}
+
+function isDark(hex){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return(r*299+g*587+b*114)/1000<128;
+}
+function blend(hex,with_,amt){
+  const r1=parseInt(hex.slice(1,3),16),g1=parseInt(hex.slice(3,5),16),b1=parseInt(hex.slice(5,7),16);
+  const r2=parseInt(with_.slice(1,3),16),g2=parseInt(with_.slice(3,5),16),b2=parseInt(with_.slice(5,7),16);
+  return`rgb(${Math.round(r1*(1-amt)+r2*amt)},${Math.round(g1*(1-amt)+g2*amt)},${Math.round(b1*(1-amt)+b2*amt)})`;
 }
 
-function buildSlide(p) {
-  const fs = fontStack(p.font_zh, p.font_en);
-  // Detect if background is dark
-  const isDark = isDarkColor(p.bg);
-  const cardBg = blendColor(p.bg, isDark ? '#ffffff' : '#000000', 0.08);
-  return `
-<div style="width:100%;height:100%;background:${p.bg};padding:14px 18px;display:flex;flex-direction:column;font-family:${fs};">
-  <div style="width:28px;height:3px;background:${p.accent};margin-bottom:10px;"></div>
-  <div style="font-size:8px;font-weight:700;color:${p.accent};letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;">SECTION 02</div>
-  <div style="font-size:14px;font-weight:800;color:${p.text};line-height:1.25;margin-bottom:10px;">核心竞争力分析<br>市场份额提升 34%</div>
-  <div style="height:1.5px;background:${p.accent};width:32px;margin-bottom:10px;opacity:.6;"></div>
-  <div style="display:flex;gap:8px;flex:1;">
-    <div style="flex:1;background:${cardBg};border-radius:3px;padding:8px;">
-      <div style="font-size:7.5px;font-weight:700;color:${p.accent};margin-bottom:4px;">核心指标</div>
-      <div style="font-size:7px;color:${p.text};line-height:1.6;opacity:.85;">增长率 +34%<br>市场份额 28%</div>
+function slideHtml(p){
+  const fs=fontStack(p.font_zh,p.font_en);
+  const cardBg=blend(p.bg,isDark(p.bg)?'#ffffff':'#000000',0.07);
+  return`<div style="width:100%;height:100%;background:${p.bg};padding:12px 16px;display:flex;flex-direction:column;font-family:${fs};">
+  <div style="width:24px;height:2.5px;background:${p.accent};margin-bottom:9px;"></div>
+  <div style="font-size:7px;font-weight:700;color:${p.accent};letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px;">SECTION 02</div>
+  <div style="font-size:12px;font-weight:800;color:${p.text};line-height:1.25;margin-bottom:9px;">核心竞争力分析<br>市场份额提升 34%</div>
+  <div style="height:1.5px;background:${p.accent};width:28px;margin-bottom:9px;opacity:.5;"></div>
+  <div style="display:flex;gap:6px;flex:1;">
+    <div style="flex:1;background:${cardBg};border-radius:3px;padding:7px;">
+      <div style="font-size:6.5px;font-weight:700;color:${p.accent};margin-bottom:3px;">核心指标</div>
+      <div style="font-size:6px;color:${p.text};line-height:1.6;opacity:.85;">增长率 +34%<br>市占率 28%</div>
     </div>
-    <div style="flex:1;background:${cardBg};border-radius:3px;padding:8px;">
-      <div style="font-size:7.5px;font-weight:700;color:${p.accent};margin-bottom:4px;">趋势判断</div>
-      <div style="font-size:7px;color:${p.text};line-height:1.6;opacity:.85;">持续上升<br>预计 Q4 加速</div>
+    <div style="flex:1;background:${cardBg};border-radius:3px;padding:7px;">
+      <div style="font-size:6.5px;font-weight:700;color:${p.accent};margin-bottom:3px;">趋势</div>
+      <div style="font-size:6px;color:${p.text};line-height:1.6;opacity:.85;">持续上升<br>Q4 加速</div>
     </div>
   </div>
-  <div style="margin-top:8px;font-size:6.5px;color:${p.muted};display:flex;justify-content:space-between;">
-    <span>来源：IDC 2024</span><span>03 / 12</span>
-  </div>
+  <div style="margin-top:7px;font-size:6px;color:${p.muted};display:flex;justify-content:space-between;"><span>IDC 2024</span><span>03/12</span></div>
 </div>`;
 }
 
-function isDarkColor(hex) {
-  const r = parseInt(hex.slice(1,3),16);
-  const g = parseInt(hex.slice(3,5),16);
-  const b = parseInt(hex.slice(5,7),16);
-  return (r*299 + g*587 + b*114) / 1000 < 128;
+function cardHtml(p, badge){
+  const sel = p.id === selectedId;
+  return`<div class="pcard${sel?' selected':''}" data-id="${p.id}" onclick="select_('${p.id}')">
+  <div class="slide-wrap">${slideHtml(p)}</div>
+  <div class="swatches">
+    <div class="sw"><div class="sw-dot" style="background:${p.bg}"></div><div><div class="sw-role">背景</div><div class="sw-hex">${p.bg}</div></div></div>
+    <div class="sw"><div class="sw-dot" style="background:${p.text}"></div><div><div class="sw-role">正文</div><div class="sw-hex">${p.text}</div></div></div>
+    <div class="sw"><div class="sw-dot" style="background:${p.accent}"></div><div><div class="sw-role">强调</div><div class="sw-hex">${p.accent}</div></div></div>
+    <div class="sw"><div class="sw-dot" style="background:${p.muted}"></div><div><div class="sw-role">辅助</div><div class="sw-hex">${p.muted}</div></div></div>
+  </div>
+  <div class="meta">
+    ${badge?`<div style="font-size:10px;font-weight:700;background:#FFF3CD;color:#856404;padding:2px 8px;border-radius:10px;display:inline-block;margin-bottom:5px;">✦ Claude 推荐 · 方案 ${badge}</div>`:''}
+    <div class="pname">${p.name}</div>
+    <div class="pzh">${p.zh||''}</div>
+    <div class="pmood">${p.mood}</div>
+    <div class="plock">→ ${p.lock}</div>
+  </div>
+  <button class="sel-btn" onclick="event.stopPropagation();select_('${p.id}')">${sel?'✓ 已选择':'选择此配色'}</button>
+</div>`;
 }
 
-function blendColor(hex, blend, amount) {
-  const r1=parseInt(hex.slice(1,3),16), g1=parseInt(hex.slice(3,5),16), b1=parseInt(hex.slice(5,7),16);
-  const r2=parseInt(blend.slice(1,3),16), g2=parseInt(blend.slice(3,5),16), b2=parseInt(blend.slice(5,7),16);
-  const r=Math.round(r1*(1-amount)+r2*amount);
-  const g=Math.round(g1*(1-amount)+g2*amount);
-  const b=Math.round(b1*(1-amount)+b2*amount);
-  return `rgb(${r},${g},${b})`;
+function renderRecommended(){
+  const el = document.getElementById('recommended-section');
+  if(!RECOMMENDED||!RECOMMENDED.length){el.innerHTML='';return;}
+  const labels=['A','B','C','D'];
+  el.innerHTML=`<div class="section-title">Claude 推荐</div>
+  <div class="grid">${RECOMMENDED.map((p,i)=>cardHtml(p,labels[i]||String(i+1))).join('')}</div>
+  <div class="section-title" style="margin-top:8px;">或从配色库中自由选择</div>`;
 }
 
-function render() {
-  document.getElementById('grid').innerHTML = PALETTES.map(p => `
-    <div class="palette-card ${p.id === activeId ? 'selected' : ''}"
-         data-id="${p.id}" onclick="selectPalette('${p.id}')">
-      <div class="slide-preview">${buildSlide(p)}</div>
-      <div class="swatches">
-        <div class="swatch">
-          <div class="swatch-dot" style="background:${p.bg}"></div>
-          <div class="swatch-info">
-            <div class="swatch-role">背景</div>
-            <div class="swatch-hex">${p.bg}</div>
-          </div>
-        </div>
-        <div class="swatch">
-          <div class="swatch-dot" style="background:${p.text}"></div>
-          <div class="swatch-info">
-            <div class="swatch-role">正文</div>
-            <div class="swatch-hex">${p.text}</div>
-          </div>
-        </div>
-        <div class="swatch">
-          <div class="swatch-dot" style="background:${p.accent}"></div>
-          <div class="swatch-info">
-            <div class="swatch-role">强调色</div>
-            <div class="swatch-hex">${p.accent}</div>
-          </div>
-        </div>
-        <div class="swatch">
-          <div class="swatch-dot" style="background:${p.muted}"></div>
-          <div class="swatch-info">
-            <div class="swatch-role">辅助色</div>
-            <div class="swatch-hex">${p.muted}</div>
-          </div>
-        </div>
-      </div>
-      <div class="meta">
-        <div class="palette-id">方案 ${p.id}</div>
-        <div class="palette-name">${p.name}</div>
-        <div class="palette-font">字体：${p.font_zh} + ${p.font_en}</div>
-        <div class="palette-mood">${p.mood}</div>
-        <div class="lock-badge">→ 推荐结构层：${p.lock}</div>
-      </div>
-      <button class="select-btn"
-              onclick="event.stopPropagation(); selectPalette('${p.id}')">
-        ${p.id === activeId ? '✓ 已选择' : '选择此配色'}
-      </button>
+function renderFilters(){
+  document.getElementById('filter-row').innerHTML=
+    Object.entries(CATS).map(([k,v])=>
+      `<button class="filter-btn${k===activeCat?' active':''}" onclick="setFilter('${k}')">${v}</button>`
+    ).join('');
+}
+
+function renderLibrary(){
+  document.getElementById('library-grid').innerHTML=
+    LIBRARY.map(p=>{
+      const hidden=(activeCat!=='all'&&p.category!==activeCat);
+      return`<div class="pcard${p.id===selectedId?' selected':''}${hidden?' hidden':''}" data-id="${p.id}" onclick="select_('${p.id}')">
+  <div class="slide-wrap">${slideHtml(p)}</div>
+  <div class="swatches">
+    <div class="sw"><div class="sw-dot" style="background:${p.bg}"></div><div><div class="sw-role">背景</div><div class="sw-hex">${p.bg}</div></div></div>
+    <div class="sw"><div class="sw-dot" style="background:${p.text}"></div><div><div class="sw-role">正文</div><div class="sw-hex">${p.text}</div></div></div>
+    <div class="sw"><div class="sw-dot" style="background:${p.accent}"></div><div><div class="sw-role">强调</div><div class="sw-hex">${p.accent}</div></div></div>
+    <div class="sw"><div class="sw-dot" style="background:${p.muted}"></div><div><div class="sw-role">辅助</div><div class="sw-hex">${p.muted}</div></div></div>
+  </div>
+  <div class="meta">
+    <div class="pname">${p.name}</div>
+    <div class="pzh">${p.zh}</div>
+    <div class="pmood">${p.mood}</div>
+    <div class="plock">→ ${p.lock}</div>
+  </div>
+  <button class="sel-btn" onclick="event.stopPropagation();select_('${p.id}')">${p.id===selectedId?'✓ 已选择':'选择此配色'}</button>
+</div>`;
+    }).join('');
+}
+
+function setFilter(cat){activeCat=cat;renderFilters();renderLibrary();}
+
+function coverSlideHtml(p){
+  const fs=fontStack(p.font_zh,p.font_en);
+  return`<div style="width:100%;height:100%;background:${p.bg};padding:18px 24px;display:flex;flex-direction:column;justify-content:space-between;font-family:${fs};">
+  <div style="font-size:8px;font-weight:700;color:${p.accent};letter-spacing:2px;text-transform:uppercase;">REPORT · 2024</div>
+  <div>
+    <div style="width:36px;height:3px;background:${p.accent};margin-bottom:12px;"></div>
+    <div style="font-size:18px;font-weight:800;color:${p.text};line-height:1.2;margin-bottom:10px;">AI 基础设施<br>行业全景报告</div>
+    <div style="font-size:9px;color:${p.muted};">中国产业研究院 · 2024.Q4</div>
+  </div>
+  <div style="font-size:7.5px;color:${p.muted};">01 / 18</div>
+</div>`;
+}
+
+function updateShowcase(p){
+  document.getElementById('sc-name').textContent=p.name;
+  document.getElementById('sc-zh').textContent=p.zh||'';
+  document.getElementById('sc-mood').textContent=p.mood;
+  document.getElementById('sc-cover').innerHTML=coverSlideHtml(p);
+  document.getElementById('sc-content').innerHTML=slideHtml(p);
+  document.getElementById('sc-swatches').innerHTML=
+    [['背景',p.bg],['正文',p.text],['强调',p.accent],['辅助',p.muted]]
+    .map(([role,hex])=>`<div class="sc-sw">
+      <div class="sc-dot" style="background:${hex}"></div>
+      <div class="sc-swatch-info"><div class="sc-role">${role}</div><div class="sc-hex">${hex}</div></div>
     </div>`).join('');
+  document.getElementById('showcase').classList.add('visible');
+  document.getElementById('cbtn').textContent='确认此配色方案 →';
+  document.getElementById('cbtn').classList.remove('done');
+  document.getElementById('cmsg').classList.remove('show');
 }
 
-function selectPalette(id) {
-  activeId = id;
-  render();
-  document.getElementById('confirm-btn').textContent = '确认此配色方案 →';
-  document.getElementById('confirm-btn').classList.remove('done');
-  document.getElementById('copied-msg').classList.remove('show');
+function closeShowcase(){
+  document.getElementById('showcase').classList.remove('visible');
 }
 
-function confirmSelection() {
-  if (!activeId) {
-    alert('请先点击选择一个配色方案');
-    return;
-  }
-  const p = PALETTES.find(x => x.id === activeId);
-  const text = `我选择方案 ${p.id} — ${p.name}`;
-  navigator.clipboard.writeText(text).then(() => {
-    document.getElementById('confirm-btn').textContent = '✓ 已确认';
-    document.getElementById('confirm-btn').classList.add('done');
-    document.getElementById('copied-msg').classList.add('show');
-  }).catch(() => {
-    document.getElementById('copied-msg').innerHTML =
-      `请手动复制粘贴到 Claude：<br><strong>${text}</strong>`;
-    document.getElementById('copied-msg').classList.add('show');
+function select_(id){
+  selectedId=id;
+  const all=[...(RECOMMENDED||[]),...LIBRARY];
+  const p=all.find(x=>x.id===id);
+  renderRecommended();
+  renderLibrary();
+  updateShowcase(p);
+}
+
+function confirm_(){
+  if(!selectedId){alert('请先选择一个配色方案');return;}
+  const all=[...(RECOMMENDED||[]),...LIBRARY];
+  const p=all.find(x=>x.id===selectedId);
+  const text=`我选择配色方案：${p.name}（${p.zh||p.id}）`;
+  navigator.clipboard.writeText(text).then(()=>{
+    document.getElementById('cbtn').textContent='✓ 已确认';
+    document.getElementById('cbtn').classList.add('done');
+    document.getElementById('cmsg').classList.add('show');
+  }).catch(()=>{
+    document.getElementById('cmsg').innerHTML=`请手动复制：<strong>${text}</strong>`;
+    document.getElementById('cmsg').classList.add('show');
   });
 }
 
-render();
+renderRecommended();
+renderFilters();
+renderLibrary();
 </script>
 </body>
 </html>"""
@@ -314,23 +581,24 @@ render();
 def main() -> None:
     repo_root = Path(__file__).parent.parent
     assets_dir = repo_root / "assets"
+    assets_dir.mkdir(exist_ok=True)
+
     palette_json = assets_dir / "palettes.json"
-
-    if not palette_json.exists():
-        print(f"✗ 找不到 {palette_json}")
-        print("  Claude 需要先把配色方案写入 assets/palettes.json，再运行此脚本。")
-        sys.exit(1)
-
-    palettes = json.loads(palette_json.read_text(encoding="utf-8"))
-    if not isinstance(palettes, list) or not palettes:
-        print("✗ palettes.json 格式错误，应为非空数组。")
-        sys.exit(1)
+    recommended: list = []
+    if palette_json.exists():
+        try:
+            recommended = json.loads(palette_json.read_text(encoding="utf-8"))
+        except Exception:
+            pass
 
     out = assets_dir / "palette-preview.html"
-    html = HTML_TEMPLATE.replace("PALETTES_JSON", json.dumps(palettes, ensure_ascii=False))
+    html = (HTML
+            .replace("RECOMMENDED_JSON", json.dumps(recommended, ensure_ascii=False))
+            .replace("LIBRARY_JSON", json.dumps(PALETTE_LIBRARY, ensure_ascii=False)))
     out.write_text(html, encoding="utf-8")
     print(f"✓ {out}")
-    print("  在浏览器中打开，点击选择配色方案后确认，选择自动复制到剪贴板。")
+    print(f"  推荐方案: {len(recommended)} 套  |  配色库: {len(PALETTE_LIBRARY)} 套")
+    print("  在浏览器中打开，选择配色后点「确认此配色方案」，选择自动复制到剪贴板。")
 
 
 if __name__ == "__main__":
