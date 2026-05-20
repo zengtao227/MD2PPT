@@ -76,7 +76,7 @@ Resolve dependencies in this order:
 | Dependency | Resolution |
 |------------|------------|
 | `ui-ux-pro-max` | Use the current repo's `skills/ui-ux-pro-max/scripts/search.py` if present; otherwise try `$HOME/.codex/skills/ui-ux-pro-max/scripts/search.py`, then `$HOME/.claude/skills/ui-ux-pro-max/scripts/search.py`. If none exists, synthesize a short design intelligence brief from the source and mark the tool as unavailable. |
-| `design-profiles/` | Use the current repo's `design-profiles/` if present. If absent, use a lightweight visual contract written directly in `deck.md` and do not cite a missing profile file. |
+| `design-profiles/` | Use the current repo's `design-profiles/` if present. Otherwise look for `design-profiles/` inside the directory containing this SKILL.md (bundled by install.sh). If neither exists, use a lightweight visual contract written directly in `deck.md` and do not cite a missing profile file. |
 | PPTX fallback | Use `skills/pptx/SKILL.md` only when it exists in the current repo. If absent, do not pretend the fallback is available. |
 | HTML engines | Use `guizang-ppt-skill` or `html-ppt-skill` only when the skill/tool is available in the active environment. If neither is available, explain the missing dependency or generate only the handoff prompt. |
 | MD2PPT docs | Treat `docs/pptx-master-workflow.md` and `docs/quality-gates.md` as optional project-level context. Outside MD2PPT, rely on this skill's reference files and the minimum QA checklist below instead. |
