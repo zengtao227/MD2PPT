@@ -1,260 +1,468 @@
-# 从主题到专业 PPTX：完整工作流
+# 从主题到专业可编辑 PPTX：主工作流
 
-> 适用场景：你有一个主题，或者已经有了文字内容，想做成设计专业、逻辑清晰的 PPTX。
-
----
-
-## 总览
-
-```
-[阶段一] 内容准备
-   写 deck.md（结构 + 文字 + 数据）
-       ↓
-[阶段二] 设计选型
-   用 ui-ux-pro-max 查配色/字体风格建议
-   → 选 design-profiles/ 中对应的设计档案
-       ↓
-[阶段三] 生成 PPTX
-   Codex / Claude 读取 deck.md + design-profile
-   → 调用 pptxgenjs（presentation skill）
-   → 输出可编辑 .pptx
-       ↓
-[阶段四] 预览 & 迭代
-   打开 .pptx 检查
-   → 告诉 AI 改哪里 → 重新生成
-       ↓
-[最终] 提交 / 分享
-```
+> 适用场景：只有一个主题，或已经有文字内容，想用 Codex 生成设计语言专业、叙事逻辑清晰、可在 PowerPoint 里继续编辑的 `.pptx`。
 
 ---
 
-## 阶段一：内容准备
+## 先纠偏：Codex 主路径不是 pptxgenjs
 
-### 1.1 写 `deck.md`
+本项目里有两套容易混淆的能力：
 
-不需要任何格式指令，只写**内容骨架**：
+| 路径 | 适合工具 | 生成引擎 | 定位 |
+|------|----------|----------|------|
+| **主路径** | Codex `Presentations` 插件 | artifact-tool `presentation-jsx` | 高质量可编辑 PPTX，带叙事、设计系统、渲染 QA |
+| **备用路径** | Claude Code / 离线脚本 | `skills/pptx` + pptxgenjs | 没有 Codex Presentations 时的可编辑 PPTX 方案 |
+
+因此，在 Codex 里写 PPTX 时，Prompt 应该明确要求：
+
+- 使用 **Presentations** 技能 / 插件
+- 使用 **artifact-tool presentation JSX**
+- 输出可编辑 `.pptx`
+- 通过渲染预览、contact sheet、layout JSON 做质量检查
+- 不要把 `pptxgenjs` 当成 Codex 主生成引擎
+
+`pptxgenjs` 仍然有价值，但它属于本仓库 `skills/pptx` 的备用工作流，不是 Codex 的首选路径。
+
+---
+
+## 推荐总流程
+
+```text
+[1] 内容源
+    主题 / 原始文字 / 数据 / 参考资料
+        ↓
+[2] PPTX slide planner
+    把材料拆成 audience、thesis、arc、slide claims、proof objects
+        ↓
+[3] deck.md
+    写清 thesis、audience、每页 claim、proof object、source
+        ↓
+[4] 设计情报
+    用 ui-ux-pro-max 查行业、风格、字体、配色、图表、UX 风险
+        ↓
+[5] 视觉合同
+    选 design-profiles/ 中的 Open Design 档案，并形成 deck-brief
+        ↓
+[6] Codex Presentations 生成
+    claim spine → design system → contact-sheet plan
+    → artifact-tool presentation JSX → render → QA → export PPTX
+        ↓
+[7] 迭代
+    看 contact sheet 和完整预览图，按页反馈，重新渲染验证
+        ↓
+[最终] outputs/<主题名>.pptx
+```
+
+这个流程的关键不是“把 Markdown 套模板”，而是先把内容论证写清楚，再把视觉系统锁住，最后让 Presentations 插件按可编辑 PPTX 的方式构建和验证。
+
+---
+
+## PPTX Slide Planner 是什么
+
+`PPTX slide planner` 是从原始材料到 `deck.md` 的规划层。它不负责画幻灯片，也不直接生成 `.pptx`，而是先决定“这份 deck 应该如何讲”。
+
+它的输出应该包括：
+
+- `audience`：谁会看这份 PPT
+- `goal`：希望对方理解、相信或决定什么
+- `thesis`：整份 deck 要证明的一句话
+- `arc`：从问题到结论的叙事路径
+- `slide count`：目标页数
+- `slide plan`：每页的 claim、proof object、layout family、source、missing info
+- `appendix plan`：哪些材料只放附录，不进入主线
+
+它解决的是“材料太多、结构不清、直接生成会变成信息堆砌”的问题。真正的 PPTX 生成要等 planner 把每页的职责定清楚之后再开始。
+
+---
+
+## 两类常见输入流程
+
+### A. 文章 / 知识文稿 / 一本书
+
+这类输入的关键不是逐段搬运，而是提炼和重组。
+
+```text
+文章 / 书 / 知识文稿
+    ↓
+提取核心论点、章节结构、关键证据、引用、案例
+    ↓
+PPTX slide planner：决定 6-12 页主线和 appendix
+    ↓
+deck.md：每页 claim + proof object + source
+    ↓
+设计情报 + visual contract
+    ↓
+Codex Presentations 生成 PPTX
+```
+
+建议 planner 优先问：
+
+- 这份材料最值得听众记住的一句话是什么？
+- 哪些观点是主线，哪些只是背景？
+- 哪些内容可以视觉化成时间线、框架、对比、因果链、分类图？
+- 哪些数字、引用、案例必须保留来源？
+- 如果只能讲 8 页，哪些内容必须删掉？
+
+推荐 deck 结构：
+
+| 页 | 作用 |
+|----|------|
+| 1 | 封面：主题 + 一句话 thesis |
+| 2 | 为什么这个主题重要 |
+| 3 | 核心框架 / 目录，但标题必须是结论句 |
+| 4-7 | 关键观点，每页一个 claim + 一个 proof object |
+| 8 | 综合模型 / 方法论 / 总结图 |
+| 9 | 对听众的启示或行动建议 |
+| 10+ | 附录：原文引用、详细数据、延伸阅读 |
+
+### B. 工程项目介绍
+
+这类输入的关键是让听众快速理解“为什么做、做了什么、怎么做、有什么结果、下一步是什么”。
+
+```text
+工程项目资料 / README / 代码仓库 / 设计文档
+    ↓
+提取问题、用户场景、系统边界、模块、数据流、技术选择、指标
+    ↓
+PPTX slide planner：决定项目叙事和架构图/流程图位置
+    ↓
+deck.md：每页 claim + proof object + source
+    ↓
+设计情报 + visual contract
+    ↓
+Codex Presentations 生成 PPTX
+```
+
+建议 planner 优先问：
+
+- 项目解决的真实问题是什么？
+- 听众是业务方、评委、投资人、工程师，还是未来维护者？
+- 哪张图最能解释系统：架构图、数据流、调用链、流程图还是部署图？
+- 有哪些可量化结果：性能、成本、准确率、效率、稳定性、覆盖率？
+- 哪些技术选择需要解释 tradeoff？
+
+推荐 deck 结构：
+
+| 页 | 作用 |
+|----|------|
+| 1 | 封面：项目名 + 价值主张 |
+| 2 | 背景问题：为什么需要这个项目 |
+| 3 | 使用场景 / 用户旅程 |
+| 4 | 解决方案总览 |
+| 5 | 系统架构图 |
+| 6 | 核心流程 / 数据流 |
+| 7 | 关键技术选择与取舍 |
+| 8 | 当前成果 / 指标 / demo 截图 |
+| 9 | 风险、限制和下一步 |
+| 10 | 决策请求 / 合作方式 / Q&A |
+
+---
+
+## 工具分工
+
+| 层 | 工具 / 文件 | 职责 |
+|----|-------------|------|
+| 内容层 | `deck.md` | 事实、顺序、主张、证据对象、数据来源 |
+| 设计情报层 | `skills/ui-ux-pro-max` | 查适合行业的风格、字体、颜色、图表和 UX 检查项 |
+| 视觉合同层 | `design-profiles/` | 把 Open Design 的设计语言落成 hex、字体、版式、禁用项 |
+| 生成层 | Codex `Presentations` | 叙事整理、设计系统锁定、JSX 构建、渲染 QA、导出 PPTX |
+| 备用生成层 | `skills/pptx` + pptxgenjs | Claude Code 或离线场景备用 |
+| 快速草稿层 | Marp | 快速写作、预览、PDF/不可细编辑 PPTX 导出 |
+
+`ui-ux-pro-max` 和 Open Design 都不是 PPTX 生成器。前者负责帮你做设计判断，后者负责提供设计语言，真正把它们变成可编辑 `.pptx` 的主引擎是 Codex `Presentations`。
+
+---
+
+## 阶段一：写 deck.md
+
+`deck.md` 不要写复杂样式，也不要把它写成 Marp 页面。它应该是内容和证据的唯一来源。
+
+推荐结构：
 
 ```markdown
-# 演示主题（会成为封面标题）
+# 演示主题
 
-## 演示背景
-- 项目名称、日期、演讲人
+## Metadata
+- Audience: 听众是谁
+- Goal: 这份 PPT 要让听众做什么决定
+- Length: 目标页数
+- Tone: 专业 / 路演 / 竞赛 / 内部汇报
 
-## 问题 / 机会
-- 核心问题是什么
-- 市场规模 / 数据支撑
+## Thesis
+一句话说明整份 deck 要证明什么。
 
-## 解决方案
-- 我们做了什么
-- 核心差异点（3 个以内）
+## Slides
 
-## 成果 / 数据
-- 关键指标（数字要精确，不要编造）
+### 01 封面
+- Claim: 一句话主张，不只是标题
+- Proof object: 主题名 / 关键指标 / 场景图
+- Source: 用户提供
 
-## 下一步
-- 请求 / 行动项
+### 02 问题
+- Claim: 现在的问题为什么值得解决
+- Proof object: 1 个数据、对比、流程断点或案例
+- Source: 数据来源或“用户提供”
 
-## 附录（可选）
-- 详细数据、技术细节
+### 03 解决方案
+- Claim: 方案如何直接回应问题
+- Proof object: 架构图 / 流程图 / 三段式机制
+- Source: 用户提供
+
+### 04 结果 / 价值
+- Claim: 已经产生或预计产生什么结果
+- Proof object: KPI、趋势、对比表
+- Source: 数据来源
+
+### 05 下一步
+- Claim: 现在需要推进的具体动作
+- Proof object: roadmap / owner / decision ask
+- Source: 用户提供
 ```
 
-### 1.2 确认页数规划
+写作要求：
 
-| 演示类型 | 建议页数 |
-|---------|---------|
-| 投资人路演 | 10–12 页 |
-| 竞赛答辩 | 8–15 页 |
-| 项目汇报 | 6–10 页 |
-| 课程展示 | 5–8 页 |
+- 每页都要有 `Claim`，不要只写“市场分析”“产品介绍”这种题目。
+- 每页只承载一个主要证据对象：图表、流程、时间线、对比、案例或大数字。
+- 数字必须来自原始资料；没有数据就写“缺失”，不要让 AI 补。
+- 已有长文内容时，先让 Codex 把它压缩成 claim spine，再进入设计。
 
 ---
 
-## 阶段二：设计选型
+## 阶段二：用 ui-ux-pro-max 做设计情报
 
-### 2.1 用 ui-ux-pro-max 获取设计建议
-
-运行以下搜索（在项目根目录执行）：
+新版 `ui-ux-pro-max` 支持 `--design-system` 聚合生成。优先先跑一条总检索，把行业推理规则、风格、语义色板、字体、页面模式和反模式汇总出来：
 
 ```bash
-# 1. 按行业查配色方案
-python3 skills/ui-ux-pro-max/scripts/search.py "SaaS tech startup" --domain color
-
-# 2. 查字体搭配风格
-python3 skills/ui-ux-pro-max/scripts/search.py "professional elegant" --domain typography
-
-# 3. 查 UI 风格定位
-python3 skills/ui-ux-pro-max/scripts/search.py "minimalism dark mode" --domain style
+python3 skills/ui-ux-pro-max/scripts/search.py "<行业 + deck 类型 + 听众>" \
+  --design-system \
+  --format markdown \
+  --project-name "<演示主题>"
 ```
 
-**常用行业关键词：**
+这份输出是**设计情报简报**，不是最终 PPTX 视觉合同。它偏 Web/UI 语境，里面的动画、CTA、landing section 需要翻译成 deck 语言：版式节奏、proof object、视觉层级、图表语法、反模式。
 
-| 场景 | 搜索词 |
-|------|-------|
+然后根据需要补充定向检索：
+
+```bash
+python3 skills/ui-ux-pro-max/scripts/search.py "<行业/项目类型>" --domain product
+python3 skills/ui-ux-pro-max/scripts/search.py "<视觉气质>" --domain style
+python3 skills/ui-ux-pro-max/scripts/search.py "<字体气质>" --domain typography
+python3 skills/ui-ux-pro-max/scripts/search.py "<中文字体或英文字体>" --domain google-fonts
+python3 skills/ui-ux-pro-max/scripts/search.py "<行业/场景>" --domain color
+python3 skills/ui-ux-pro-max/scripts/search.py "<证据类型>" --domain chart
+python3 skills/ui-ux-pro-max/scripts/search.py "layout spacing contrast accessibility" --domain ux
+```
+
+常用关键词：
+
+| 场景 | 检索词 |
+|------|--------|
 | 科技 / SaaS | `saas tech startup` |
 | 金融 / 投资 | `fintech investment finance` |
 | 医疗 / 健康 | `healthcare medical` |
-| 教育 | `education learning` |
-| 品牌 / 消费品 | `brand consumer beauty` |
-| 竞赛答辩 | `competition academic professional` |
+| 教育 / 竞赛 | `education competition academic professional` |
+| 消费品牌 | `brand consumer beauty retail` |
+| 数据报告 | `trend comparison metrics timeline` |
 
-### 2.2 选择 design-profile
+把检索结果整理成 5 行设计简报即可：
 
-根据 ui-ux-pro-max 建议 + 场景，从 `design-profiles/` 选一个：
+```markdown
+## Design Intelligence
+- Generated brief: 来自 `--design-system` 的候选 style / palette / typography / anti-patterns
+- Style: Swiss Modernism 2.0 / Minimalism / Editorial / Linear dark ...
+- Palette direction: 语义色板 primary / accent / background / foreground / muted / border
+- Typography direction: 中文优先 Noto Sans SC / Noto Serif SC，英文按 profile
+- Chart grammar: 趋势用 line，排名用 horizontal bar，对比用 before/after
+- UX risks: 对比度、标题换行、卡片拥挤、页脚撞内容
+```
+
+这一步不要求照抄检索结果。它的作用是帮助你选择或微调设计档案，并提前列出反模式。比如 `--design-system` 给出 Motion-Driven 时，PPTX 里不能照搬“滚动动效”，只能把它翻译成更强的章节节奏、转场页和 proof object 变化。
+
+---
+
+## 阶段三：选择 Open Design / design-profile
+
+从 `design-profiles/` 选一个作为视觉合同：
 
 | 档案 | 风格 | 适合 |
 |------|------|------|
-| `guizang-monocle` | 暖纸色 + 衬线，叙事感 | 通用商业、路演、课程汇报 |
-| `guizang-indigo` | 靛蓝 + 冷调科技 | 技术方案、数据报告、竞赛 |
-| `swiss-klein-blue` | Klein Blue + 瑞士风 | 商业计划、执行报告、产品路线 |
-| `linear-dark` | 暗色 + 精准工程感 | SaaS 产品、投资人 deck |
-| `notion-warm` | 暖白 + 亲和极简 | 内部文档、文化类、轻量展示 |
+| `swiss-klein-blue` | Klein Blue + 瑞士网格 | 商业计划、执行报告、产品路线、竞赛答辩 |
+| `linear-dark` | 暗色 + 工程精准感 | SaaS 产品、技术平台、投资人 deck |
+| `guizang-indigo` | 靛蓝 + 冷调科技 / 研究感 | 技术方案、数据报告、AI 项目 |
+| `guizang-monocle` | 暖纸色 + 叙事编辑感 | 通用商业、课程汇报、观点型演示 |
+| `notion-warm` | 暖白 + 亲和极简 | 内部汇报、文化类、轻量展示 |
 
-**决策参考：**
-- 要说服投资人 → `swiss-klein-blue` 或 `linear-dark`
-- 要参加比赛 → `guizang-indigo` 或 `swiss-klein-blue`
-- 要做课程展示 → `guizang-monocle` 或 `notion-warm`
-- 对方需要可编辑中文 PPTX → 任选，注意字体替换（见阶段四）
+选择规则：
 
----
+- 面向投资人或商业决策：优先 `swiss-klein-blue` / `linear-dark`
+- 技术、AI、数据、竞赛：优先 `guizang-indigo` / `swiss-klein-blue`
+- 课程、内部、文化、说明型：优先 `guizang-monocle` / `notion-warm`
+- 如果客户有品牌色，仍先选最接近的 profile，再把品牌色作为有限 accent，不要重写整套视觉系统。
 
-## 阶段三：生成 PPTX
+建议在 `deck.md` 后面补一个简短 `Design Contract`：
 
-### 3.1 使用 Codex（推荐）
-
-在 Codex 或 VS Code 终端中，给 AI 以下 Prompt：
-
-```
-我要做一个演示文稿。
-
-[设计档案]
-请读取 design-profiles/<档案名>.md，严格按照其中的：
-- 配色（hex 值锁死，不能改）
-- 字体（display/body 字体对应中英文）
-- 版式规则（直角、禁渐变等铁律）
-
-[内容文件]
-请读取 deck.md，按其结构生成幻灯片，逻辑顺序不变。
-
-[生成要求]
-- 使用 pptxgenjs 生成可编辑 .pptx
-- 根据 skills/pptx/SKILL.md 的工作流执行
-- 封面用 L01 Hero Cover 版式
-- 章节切换用 L02 Act Divider
-- 数据页用 L03 Big Numbers Grid
-- 流程页用 L06 Pipeline
-- 页码格式：右下角 01 / N
-- 严禁编造数字，所有数据来自 deck.md
-- 输出保存为 outputs/<主题名>.pptx
-
-生成完成后，用 thumbnail.py 生成预览缩略图供检查。
-```
-
-### 3.2 使用 Claude Code（备用）
-
-```bash
-# 在项目目录中，给 Claude 同样的指令
-# 参考上方 Prompt，替换档案名和主题名即可
-```
-
-### 3.3 关键设计约束（所有档案通用）
-
-- **禁止渐变**：pptxgenjs 所有填充用纯色（`fill: {color: "hex"}`）
-- **禁止圆角**：`borderRadius: 0`
-- **禁止外部图片 URL**：用色块/形状代替
-- **页码**：每页右下角 `01 / N`
-- **分割线**：1px hairline，用主色，不用粗线
-
----
-
-## 阶段四：预览与迭代
-
-### 4.1 预览方式
-
-```bash
-# 生成缩略图（需要 LibreOffice + Poppler）
-python skills/pptx/scripts/thumbnail.py outputs/<文件名>.pptx
-
-# 或直接用 PowerPoint / Keynote 打开检查
-```
-
-### 4.2 常见迭代指令
-
-| 问题 | 给 AI 的指令 |
-|------|------------|
-| 某页文字太多 | "第 N 页正文超过 5 行，提炼成 3 个要点" |
-| 数据页看不清 | "第 N 页数字改为 64pt，标签改为 11pt uppercase" |
-| 封面需要副标题 | "封面加副标题：XXX，字号 20pt，muted 颜色" |
-| 章节太多/少 | "在第 N 页后插入一个 Act Divider，标题：XXX" |
-| 颜色不对 | "第 N 页背景换成设计档案的 paper-tint 色" |
-
-### 4.3 中文字体替换（手动）
-
-pptxgenjs 生成后，用 PowerPoint 手动替换：
-
-1. `编辑` → `查找/替换` → `替换字体`
-2. 将 `Inter` 替换为 `微软雅黑` 或 `苹方`（视平台）
-3. 将 `Noto Serif SC` 替换为 `宋体` 或 `思源宋体`
-
----
-
-## 快速参考卡
-
-```
-有主题 → 写 deck.md（只管内容，不管格式）
-         ↓
-选设计 → python3 skills/ui-ux-pro-max/scripts/search.py "<关键词>" --domain color
-         查结果 → 对照 design-profiles/ 选档案
-         ↓
-生成   → 给 Codex/Claude 的 Prompt：
-         "读取 design-profiles/<档案>.md + deck.md，
-          用 pptxgenjs 生成 outputs/deck.pptx"
-         ↓
-检查   → 打开 .pptx 预览，列出要改的点
-         告诉 AI：重新生成对应页
-         ↓
-完成   → 手动替换中文字体（如需要）→ 导出分享
+```markdown
+## Design Contract
+- Profile: design-profiles/swiss-klein-blue.md
+- Must keep: profile hex values, typography hierarchy, straight-edge grid grammar
+- May adapt: layout families according to content proof objects
+- Must avoid: gradients, generic card grids, invented logos, unsupported metrics
 ```
 
 ---
 
-## 三层工具分工
+## 阶段四：给 Codex 的生成 Prompt
 
-| 层 | 工具 | 职责 |
-|----|------|------|
-| **设计情报** | `skills/ui-ux-pro-max` | 查行业配色、字体风格、UI 趋势 |
-| **设计约束** | `design-profiles/` | 锁死 hex 值、字体、版式铁律 |
-| **生成引擎** | pptxgenjs + pptx skill | 按约束生成可编辑 .pptx |
+在 Codex 中直接给下面的 Prompt。把 `<...>` 替换成实际内容。
 
-这三层相互独立，也相互补充：
-- 没有 ui-ux-pro-max：不知道该选哪种风格
-- 没有 design-profiles：AI 会自由发挥，配色字体不一致
-- 没有 pptx skill：只能生成截图 PPTX，无法编辑
+```text
+我要生成一个高质量、可编辑的 PowerPoint deck。
+
+请使用 Codex 的 Presentations 技能 / 插件作为主工作流。
+生成引擎使用 artifact-tool presentation JSX。
+不要使用 pptxgenjs、Marp 或 Google Slides 作为主生成路径，除非你明确说明它们只是备用。
+
+[输入文件]
+- 内容源：deck.md
+- 设计档案：design-profiles/<profile>.md
+- 工作流参考：docs/pptx-master-workflow.md
+
+[目标]
+- 输出可编辑 .pptx 到 outputs/<deck-title>.pptx
+- scratch / preview / layout / QA 文件放在 Presentations 技能自己的 workspace 中
+- 最终只把可交付 PPTX 放到 outputs/
+
+[叙事要求]
+- 先从 deck.md 写 claim spine：thesis、audience、one-line arc、每页 claim、proof object、source
+- 每页标题必须是结论句，不是主题标签
+- 不得编造数字、客户、来源、logo 或品牌资产
+- 缺失数据要在 source notes 或 omission notes 里说明
+
+[设计要求]
+- 读取 design-profile，把颜色、字体、层级、禁用项作为硬约束
+- 结合 ui-ux-pro-max 的设计情报选择图表和版式
+- 建立 design-system：背景、字体、色板、图表语法、页码、脚注、kicker、layout families
+- 不要连续 3 页使用同一种大版式
+- 避免通用 SaaS 卡片堆叠，优先让每页有明确 proof object
+
+[构建要求]
+- 使用可编辑文本、形状、线条、表格、图表或由形状构成的可编辑图表
+- 图表需要直接标注，少用图例
+- 结构图和流程图的连接关系必须清楚，不要用装饰箭头替代语义
+
+[验证要求]
+- 渲染每页预览图、生成 contact sheet 和 layout JSON
+- 用 Presentations comeback rubric 自评
+- 至少完成一次“发现问题 → 修复 → 重新渲染验证”的循环
+- 最终回复提供：PPTX 绝对路径、验证命令/结果、仍需人工确认的风险
+```
+
+为什么要这样写：
+
+- `Presentations` 会先做叙事和设计系统，再生成 slide modules。
+- 它要求渲染 contact sheet，而不是只“打开 PPT 看一眼”。
+- 它会把图表、连接器、文本溢出、字体、节奏作为 QA 对象。
+- 这样更容易得到专业 deck，而不是一组套了颜色的普通页面。
 
 ---
 
-## 本项目文件索引
+## 阶段五：迭代方式
 
+不要只说“再高级一点”。反馈要指向页码、问题和目标。
+
+| 问题 | 推荐反馈 |
+|------|----------|
+| 标题像目录 | `第 3 页标题改成结论句，说明为什么这个问题现在必须解决。` |
+| 版式重复 | `第 4-6 页连续都是三卡片，请保留第 5 页，其余两页改成时间线和对比图。` |
+| 数据页弱 | `第 7 页把 KPI 做成主 proof object，数字 56pt，右侧加 2 行解释，不要再放四个小卡。` |
+| 文字太多 | `第 2 页正文压成 3 个短句，每句不超过 16 个汉字。` |
+| 图表不清楚 | `第 6 页去掉图例，改成直接标注，并把横轴标签减少到 4 个。` |
+| 风格跑偏 | `第 8 页回到 design-profile 的 paper / ink / accent，不要新增渐变或阴影。` |
+
+每次迭代后都要求：
+
+- 重新渲染受影响页
+- 更新 contact sheet
+- 确认没有产生新的文字溢出、遮挡、低对比问题
+
+---
+
+## 备用路径：Claude Code / 本地 pptxgenjs
+
+只有在不用 Codex `Presentations` 插件时，才走这条路。
+
+```text
+deck.md + design-profile
+    ↓
+Claude Code 读取 skills/pptx/SKILL.md
+    ↓
+pptxgenjs 生成可编辑 .pptx
+    ↓
+skills/pptx/scripts/thumbnail.py 生成缩略图
+    ↓
+人工反馈并重新生成
 ```
+
+给 Claude Code 的 Prompt 可以明确：
+
+```text
+使用本仓库 skills/pptx/SKILL.md 的 pptxgenjs 工作流。
+读取 deck.md 和 design-profiles/<profile>.md。
+生成 outputs/<deck-title>.pptx。
+生成后运行 skills/pptx/scripts/thumbnail.py 做缩略图检查。
+```
+
+这条路径能生成可编辑 PPTX，但叙事编辑、contact-sheet 质量门槛和渲染 QA 不如 Codex `Presentations` 完整，需要你自己更严格地审查。
+
+---
+
+## 与 Marp、Google Slides 的关系
+
+| 需求 | 推荐路径 |
+|------|----------|
+| 快速写内容、预览、导出 PDF | Marp |
+| 高质量可编辑 PowerPoint | Codex `Presentations` |
+| 没有 Codex Presentations，但仍要可编辑 PPTX | `skills/pptx` + pptxgenjs |
+| 最终要交 Google Slides 原生文件 | 先用 Presentations 生成本地 PPTX，再通过 Google Drive 导入为 native Google Slides |
+
+不要把 Marp 导出的 PPTX 当作“可编辑 PPTX”。Marp 更接近视觉成品导出，适合放映和提交，不适合对方在 PowerPoint 里逐个编辑文本框和图形。
+
+---
+
+## 最小顺畅方案
+
+如果只想记住一个流程：
+
+```text
+1. 写 deck.md：每页 claim + proof object + source
+2. 用 ui-ux-pro-max 查 5 类信息：style / typography / color / chart / ux
+3. 选一个 design-profile，作为 Open Design 视觉合同
+4. 在 Codex Prompt 中强制使用 Presentations + artifact-tool presentation JSX
+5. 要求 claim spine、design-system、contact-sheet plan、render QA、至少一轮修复
+6. 输出 outputs/<主题名>.pptx
+```
+
+这就是当前最顺畅的高质量 PPTX 工作流。
+
+---
+
+## 文件索引
+
+```text
 MD2PPT/
-├── deck.md                          # 你的内容（从这里开始）
-├── design-profiles/                 # 选一个设计档案
+├── deck.md                          # 内容源：主题、主张、证据、数据来源
+├── design-profiles/                 # Open Design 派生视觉合同
 │   ├── guizang-monocle.md
 │   ├── guizang-indigo.md
 │   ├── swiss-klein-blue.md
 │   ├── linear-dark.md
 │   └── notion-warm.md
 ├── skills/
-│   ├── pptx/                        # Anthropic pptx skill（生成引擎）
-│   │   ├── SKILL.md
-│   │   ├── pptxgenjs.md
-│   │   └── scripts/thumbnail.py
+│   ├── pptx/                        # Claude / 本地备用：pptxgenjs 工作流
 │   └── ui-ux-pro-max/               # 设计情报数据库
-│       ├── SKILL.md
-│       ├── data/                    # CSV 数据库（配色、字体、风格等）
-│       └── scripts/search.py
 ├── docs/
-│   ├── pptx-master-workflow.md      # 本文件
-│   ├── workflow-with-open-design.md # 详细步骤说明
-│   └── pptx-generation-schemes.md  # 方案对比
-└── outputs/                         # 生成的 PPTX 放这里（gitignore）
+│   ├── pptx-master-workflow.md      # Codex 主流程
+│   ├── workflow-with-open-design.md # Open Design 集成说明
+│   └── pptx-generation-schemes.md   # 方案对比
+└── outputs/                         # 最终导出的 PPTX / PDF / HTML
 ```

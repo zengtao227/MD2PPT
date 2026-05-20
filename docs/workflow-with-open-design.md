@@ -1,134 +1,154 @@
-# 工作流：Open Design + Anthropic pptx skill + VS Code
+# 工作流：Open Design + ui-ux-pro-max + Codex Presentations
 
-## 核心思路
+## 核心定位
 
+Open Design 不是 PPTX 生成器，它提供的是成熟的设计语言。这个仓库把其中可复用的视觉方向整理成 `design-profiles/`，再交给 Codex `Presentations` 插件生成可编辑 PPTX。
+
+```text
+deck.md 内容源
+    ↓
+ui-ux-pro-max 设计情报
+    ↓
+design-profiles/ Open Design 视觉合同
+    ↓
+Codex Presentations
+artifact-tool presentation JSX → render QA → export PPTX
+    ↓
+outputs/<deck-title>.pptx
 ```
-MD 内容（你写）
-    ↓
-选择设计档案（design-profiles/）
-    ↓
-Claude Code 调用 pptx skill（pptxgenjs）
-按设计档案规范生成 PPTX
-    ↓
-VS Code 用 thumbnail.py 预览缩略图
-或直接打开 PowerPoint 检查
-    ↓
-不满意 → 告诉 Claude 改哪页 → 重新生成
-    ↓
-最终输出：可编辑 .pptx
-```
-
----
 
 ## 三层分工
 
 | 层 | 工具 | 作用 |
 |----|------|------|
-| 内容层 | Marp MD / 普通 MD | 写内容大纲、文字、数据 |
-| 设计层 | `design-profiles/` | 确定配色、字体、版式语言 |
-| 生成层 | pptx skill + pptxgenjs | 生成可编辑 PPTX |
+| 设计情报 | `skills/ui-ux-pro-max` | 判断行业气质、配色方向、字体、图表和 UX 风险 |
+| 视觉合同 | `design-profiles/` | 锁定 Open Design 风格的 hex、字体、层级、版式禁用项 |
+| 生成与验证 | Codex `Presentations` | 生成 claim spine、design system、contact sheet、可编辑 PPTX |
 
----
+需要注意：`skills/pptx` + pptxgenjs 是 Claude Code 或离线备用路径。Codex 主路径应优先使用 `Presentations` 插件的 artifact-tool `presentation-jsx`。
 
 ## 可用设计档案
 
 | 文件 | 风格 | 适合场景 |
-|------|------|---------|
-| `guizang-monocle.md` | 墨水经典，暖纸色底 | 通用商业、科技、路演 |
-| `guizang-indigo.md` | 靛蓝瓷，冷调科技感 | 技术方案、数据报告、竞赛 |
-| `swiss-klein-blue.md` | 瑞士国际主义，Klein Blue | 商业计划、产品路线、执行报告 |
-| `linear-dark.md` | Linear 暗色，工程精准感 | SaaS 产品、投资人 deck |
-| `notion-warm.md` | Notion 暖白，亲和极简 | 课程汇报、内部文档、文化类 |
+|------|------|----------|
+| `swiss-klein-blue.md` | 瑞士国际主义，Klein Blue | 商业计划、产品路线、执行报告、竞赛答辩 |
+| `linear-dark.md` | Linear 暗色，工程精准感 | SaaS 产品、技术平台、投资人 deck |
+| `guizang-indigo.md` | 靛蓝瓷，冷调科技感 | 技术方案、数据报告、AI 产品介绍 |
+| `guizang-monocle.md` | 墨水经典，暖纸色底 | 路演、课程汇报、观点型商业叙事 |
+| `notion-warm.md` | Notion 暖白，亲和极简 | 内部文档、文化类、轻量展示 |
 
----
-
-## 具体操作步骤
+## 推荐操作步骤
 
 ### 第一步：准备内容
 
-在 VS Code 里写好内容 MD，包括：
-- 每页的主标题
-- 正文要点
-- 需要展示的数据/图表
-- 演讲者备注（可选）
+在 `deck.md` 里写清：
 
-不需要考虑格式，只管内容。
+- 听众是谁
+- 这份 PPT 要推动什么决定
+- 每页的结论句 `Claim`
+- 每页的证据对象 `Proof object`
+- 每个数字、案例、截图或 logo 的来源
 
-### 第二步：选择设计档案
+不要先写复杂样式。Open Design 档案负责视觉，不应该让内容源混入大量排版指令。
 
-根据演示场景选一个档案，记下档案名（比如 `swiss-klein-blue`）。
+### 第二步：检索设计情报
 
-### 第三步：给 Claude Code 的 Prompt
+先用新版聚合生成器拿到完整 design-system brief：
 
+```bash
+python3 skills/ui-ux-pro-max/scripts/search.py "<行业 + deck 类型 + 听众>" \
+  --design-system \
+  --format markdown \
+  --project-name "<演示主题>"
 ```
-使用 pptx skill 帮我生成一个演示文稿。
 
-设计档案：[档案名，比如 swiss-klein-blue]
-参考文件：design-profiles/swiss-klein-blue.md
+再按需要补查具体域：
 
-内容如下：
-[粘贴你的 MD 内容]
+```bash
+python3 skills/ui-ux-pro-max/scripts/search.py "<行业/项目类型>" --domain product
+python3 skills/ui-ux-pro-max/scripts/search.py "<视觉气质>" --domain style
+python3 skills/ui-ux-pro-max/scripts/search.py "<字体气质>" --domain typography
+python3 skills/ui-ux-pro-max/scripts/search.py "<中文字体或英文字体>" --domain google-fonts
+python3 skills/ui-ux-pro-max/scripts/search.py "<行业/场景>" --domain color
+python3 skills/ui-ux-pro-max/scripts/search.py "<图表类型>" --domain chart
+python3 skills/ui-ux-pro-max/scripts/search.py "layout spacing contrast accessibility" --domain ux
+```
+
+输出不需要逐字照抄，整理成设计判断即可：该用浅底还是深底、该走瑞士网格还是叙事编辑感、图表该用趋势线还是横向排名、有哪些对比度和排版风险。`--design-system` 输出偏 Web/UI，PPTX 流程只吸收 style、semantic palette、typography、anti-patterns 和 checklist。
+
+### 第三步：选择设计档案
+
+选择一个 `design-profiles/*.md`，并把它作为硬约束交给 Codex：
+
+- 色值尽量锁定，不让 AI 随手换色。
+- 字体层级锁定，中文字体优先保证可读和可导出。
+- 版式规则锁定，例如直角、少阴影、少渐变、页码、hairline。
+- 版式名称只作为布局语汇，不是必须调用的固定 API。
+
+### 第四步：给 Codex 的 Prompt
+
+```text
+请使用 Codex Presentations 技能生成一个可编辑 PPTX。
+
+输入：
+- deck.md
+- design-profiles/<profile>.md
+- docs/pptx-master-workflow.md
 
 要求：
-- 严格按照设计档案的配色、字体、版式铁律
-- 使用 pptxgenjs 生成
-- 生成后用 thumbnail.py 预览，检查排版问题
-- 至少完成一次 fix-and-verify 循环
-- 输出文件保存为 outputs/deck.pptx
+- 使用 artifact-tool presentation JSX，不使用 pptxgenjs 作为主路径
+- 先写 claim spine、design-system、contact-sheet plan
+- 设计系统必须继承 design-profile 的颜色、字体、版式禁用项
+- 可根据 ui-ux-pro-max 的结论选择图表和 proof object 表达方式
+- 构建可编辑文本、形状、线条、表格和图表
+- 渲染预览图、contact sheet、layout JSON，并完成至少一轮修复验证
+- 最终输出 outputs/<deck-title>.pptx
 ```
 
-### 第四步：预览
+### 第五步：检查和迭代
 
-```bash
-# 生成缩略图（需要 LibreOffice + Poppler）
-python skills/pptx/scripts/thumbnail.py outputs/deck.pptx
+检查顺序：
 
-# 或直接用 VS Code 打开查看（需要 Office Viewer 插件）
+1. contact sheet：缩略图是否有节奏，是否像同一个设计系统。
+2. 全尺寸预览：标题是否换行异常，文本是否溢出，图表和连接器是否清楚。
+3. PowerPoint：对象是否可编辑，中文字体是否需要替换。
+4. 内容：数字、来源、公司名、logo 是否准确。
+
+反馈示例：
+
+- `第 3 页标题仍是主题标签，请改成结论句。`
+- `第 5 页和第 6 页都是三卡片，保留第 5 页，第 6 页改成横向时间线。`
+- `第 7 页图表缺少直接标注，请去掉图例并把数值贴近条形。`
+- `第 9 页新增了 profile 外的渐变，请回到 swiss-klein-blue 的纯色系统。`
+
+## 备用：Claude Code / pptxgenjs
+
+如果不用 Codex `Presentations`，可以走本地 `skills/pptx`：
+
+```text
+Claude Code
+    ↓
+读取 skills/pptx/SKILL.md
+    ↓
+用 pptxgenjs 生成 outputs/<deck-title>.pptx
+    ↓
+用 skills/pptx/scripts/thumbnail.py 生成缩略图检查
 ```
 
-### 第五步：迭代修改
+这个路径的 Prompt 应写成：
 
-告诉 Claude：
-- "第 3 页的数字太小，改成 48pt"
-- "封面背景换成深色反白"
-- "KPI 那页改成 3 列而不是 4 列"
-
-Claude 会修改对应页的 pptxgenjs 代码并重新生成。
-
----
-
-## 安装 pptx skill 依赖
-
-```bash
-# Python 依赖
-pip install "markitdown[pptx]" Pillow
-
-# Node.js 依赖
-npm install -g pptxgenjs
-
-# macOS 安装 LibreOffice（用于预览转换）
-brew install --cask libreoffice
-
-# macOS 安装 Poppler（用于 PDF→图片）
-brew install poppler
+```text
+使用本仓库 skills/pptx/SKILL.md 的 pptxgenjs 工作流。
+读取 deck.md 和 design-profiles/<profile>.md。
+生成 outputs/<deck-title>.pptx。
+生成后运行 skills/pptx/scripts/thumbnail.py 做缩略图检查。
 ```
-
----
-
-## 与 Marp 的关系
-
-| 用途 | 推荐工具 |
-|------|---------|
-| 快速写作 + 结构检查 | Marp MD + VS Code Preview |
-| 提交用 PDF（视觉最佳）| `npm run export:pdf` |
-| 可编辑 PPTX（需要对方修改）| pptx skill + Open Design 档案 |
-| 特别漂亮的 HTML 演示 | guizang / swiss HTML 模板（直接 prompt Claude）|
-
----
 
 ## 参考资源
 
-- Anthropic pptx skill: `skills/pptx/SKILL.md`
-- pptxgenjs 用法: `skills/pptx/pptxgenjs.md`
-- 编辑现有 PPTX: `skills/pptx/editing.md`
-- Open Design 原始仓库: https://github.com/nexu-io/open-design
+- 主流程：`docs/pptx-master-workflow.md`
+- 方案对比：`docs/pptx-generation-schemes.md`
+- Codex 主插件：`Presentations`
+- 本地备用技能：`skills/pptx/SKILL.md`
+- 设计情报：`skills/ui-ux-pro-max/SKILL.md`
+- Open Design 原始仓库：https://github.com/nexu-io/open-design

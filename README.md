@@ -33,6 +33,9 @@ npm run export:all
 
 ## 文档
 
+- [专业可编辑 PPTX 主流程](docs/pptx-master-workflow.md)
+- [PPTX 生成方案对比](docs/pptx-generation-schemes.md)
+- [Open Design 集成说明](docs/workflow-with-open-design.md)
 - [导出流程](docs/export-workflow.md)
 - [Markdown 写作与排版规范](docs/markdown-writing-guide.md)
 - [预览与导出一致性指南](docs/preview-export-consistency.md)
@@ -43,12 +46,16 @@ npm run export:all
 
 仓库内置了 `skills/ui-ux-pro-max` 作为本地设计知识库。做路演、比赛答辩、项目方案类 PPT 前，先用它检索合适的产品类型、视觉风格、字体、配色和 UX 检查项，再进入 Markdown 或 PPTX 生成。
 
+如果目标是专业、可编辑的 `.pptx`，优先按 [专业可编辑 PPTX 主流程](docs/pptx-master-workflow.md) 使用 Codex `Presentations` 插件。Marp 仍适合快速写作、预览、PDF 和放映版 PPTX；本地 `skills/pptx` + pptxgenjs 作为 Claude Code / 离线备用路径。
+
 常用命令示例：
 
 ```bash
+python3 skills/ui-ux-pro-max/scripts/search.py "AI SaaS investor pitch" --design-system --format markdown --project-name "Demo Deck"
 python3 skills/ui-ux-pro-max/scripts/search.py "professional education service" --domain product
 python3 skills/ui-ux-pro-max/scripts/search.py "minimal professional editorial" --domain style
 python3 skills/ui-ux-pro-max/scripts/search.py "professional modern" --domain typography
+python3 skills/ui-ux-pro-max/scripts/search.py "Noto Sans SC Chinese presentation" --domain google-fonts
 python3 skills/ui-ux-pro-max/scripts/search.py "service education" --domain color
 python3 skills/ui-ux-pro-max/scripts/search.py "accessibility layout spacing contrast" --domain ux
 ```

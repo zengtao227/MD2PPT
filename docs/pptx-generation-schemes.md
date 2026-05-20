@@ -1,176 +1,210 @@
-# PPT 生成方案研究与选型（2026-05）
+# PPTX 生成方案研究与选型（2026-05）
 
 ## 核心需求
 
-- 所见即所得：预览效果 = 最终导出效果
-- 导出 PPTX 可在 PowerPoint 里直接编辑文字
-- 尽量免费，支持中文内容
+- 内容逻辑清晰：每页有结论、证据对象和来源
+- 设计语言专业：整份 deck 有统一视觉系统和版式节奏
+- PPTX 可编辑：PowerPoint 里能继续改文字、形状、图表或表格
+- 验证闭环明确：能渲染预览、检查缩略图、修复后再验证
+- 尽量支持中文内容
+
+---
+
+## 当前推荐
+
+**首选：Codex `Presentations` 插件 + artifact-tool presentation JSX。**
+
+原因：
+
+- 它不是简单“Markdown 转 PPTX”，而是完整 deck 工作流：claim spine、design system、contact-sheet plan、render QA、rubric 评分、迭代修复。
+- 输出是可编辑 PowerPoint。
+- 能把 `ui-ux-pro-max` 的设计情报和 `design-profiles/` 的 Open Design 视觉合同结合起来。
+- 比单纯 pptxgenjs 脚本更适合生成有专业叙事和视觉节奏的 deck。
+
+本仓库 `skills/pptx` + pptxgenjs 保留为 Claude Code / 离线备用路径。Marp 保留为快速写作、预览和提交 PDF 的路径。
 
 ---
 
 ## 方案对比总览
 
-| 方案 | 预览方式 | PPTX 可编辑 | 中文字体 | 费用 | 推荐度 |
-|------|----------|------------|---------|------|--------|
-| Marp CLI 直接导出 | VS Code Marp Preview | ❌ 截图/不可编辑 | ✅ 完整 | 免费 | 内容定稿后提交用 |
-| Office-PowerPoint-MCP-Server | 无内置预览 | ✅ | ✅ | 免费 | ⭐⭐ |
-| pptx-generator-mcp | 无内置预览 | ✅ | ✅ | 免费 | ⭐⭐ |
-| Google Slides MCP（matteoantoci） | 浏览器 Google Slides | ✅ | ⚠️ 字体替换 | 免费 | ⭐⭐⭐⭐ **当前选用** |
-| Google Slides MCP（Composio） | 浏览器 Google Slides | ✅ | ⚠️ 字体替换 | 免费额度有限 | ⭐⭐⭐ |
-| Alai MCP | Alai 在线编辑器 | ✅（需付费） | ✅ | $16/月起 | ⭐⭐⭐⭐⭐（付费首选） |
+| 方案 | 预览 / QA | PPTX 可编辑 | 中文字体 | 推荐度 | 定位 |
+|------|-----------|-------------|----------|--------|------|
+| Codex `Presentations` | artifact-tool 渲染、contact sheet、layout JSON、rubric | ✅ | ✅ 需检查本机字体 | ⭐⭐⭐⭐⭐ **当前首选** | 高质量可编辑 PPTX |
+| 本地 `skills/pptx` + pptxgenjs | LibreOffice/Poppler 缩略图 | ✅ | ✅ 需检查字体 | ⭐⭐⭐⭐ | Claude/离线备用 |
+| Marp CLI 直接导出 | VS Code Marp Preview | ❌ 更接近截图/视觉成品 | ✅ | ⭐⭐⭐ | 快速草稿、PDF、放映 |
+| Google Slides 导入 | 浏览器 Google Slides | ✅ | ⚠️ 导出后可能替换 | ⭐⭐⭐ | 需要协作或原生 Slides |
+| Office-PowerPoint-MCP-Server | 无内置强 QA | ✅ | ✅ | ⭐⭐ | 可探索 |
+| pptx-generator-mcp | 无内置强 QA | ✅ | ✅ | ⭐⭐ | 可探索 |
+| Alai MCP | 在线编辑器 | ✅ 需付费 | ✅ | ⭐⭐⭐⭐ | 付费低摩擦路径 |
 
 ---
 
-## 各方案详细说明
-
-### 1. Marp CLI 直接导出（现有工作流）
-
-**工作流：** VS Code 写 Marp MD → Marp Preview 实时预览 → `npm run export:all` 导出
-
-**优点：**
-- 预览与导出高度一致（Chromium 渲染，CSS 完整保留）
-- 支持中文字体（本地渲染）
-- 完全免费，无需配置
-
-**缺点：**
-- PPTX 不可编辑（每页是渲染截图贴入 PPT）
-- 复杂 CSS 布局在 PDF/PPTX 导出时可能有偏差
-
-**适合场景：** 内容已定稿，需要提交或放映用的 PDF/PPTX，不需要对方再次编辑。
-
----
-
-### 2. Office-PowerPoint-MCP-Server（GongRzhe）
-
-**GitHub：** `GongRzhe/Office-PowerPoint-MCP-Server`
-
-**工作流：** Claude/Codex CLI 读取 MD → 调用 MCP 工具逐步构建幻灯片 → 生成 .pptx
-
-**优点：**
-- 32 个工具，功能最完整（文字、图片、表格、图表、模板）
-- PPTX 完全可编辑
-- 基于 python-pptx，免费
-
-**缺点：**
-- 无内置预览，每次改完需手动打开 PowerPoint 查看
-- AI 需要重新解读内容，Marp CSS 样式完全丢失
-- 视觉效果与 Marp 预览差距大
-
----
-
-### 3. pptx-generator-mcp（dmytro-ustynov）
-
-**GitHub：** `dmytro-ustynov/pptx-generator-mcp`
-
-**工作流：** Claude/Codex CLI 读取 MD 文件 → MCP 解析结构 → 生成 .pptx
-
-**优点：**
-- 专门针对 MD → PPTX 场景
-- 支持代码块、表格、自定义品牌配置
-- 内容结构（标题、列表）对应关系比方案 2 更直接
-- 免费
-
-**缺点：**
-- 无内置预览
-- CSS 样式丢失，视觉与 Marp 差距大
-- 项目为个人维护，更新频率不确定
-
----
-
-### 4. Google Slides MCP（matteoantoci）⭐ 当前选用方案
-
-**GitHub：** `matteoantoci/google-slides-mcp`
+## 1. Codex Presentations（当前首选）
 
 **工作流：**
-```
-Claude CLI 调用 MCP → 写入 Google Slides
+
+```text
+deck.md + design-profile
         ↓
-浏览器打开 Google Slides = 实时预览（所见即所得）
+Codex Presentations
+claim spine → design system → contact-sheet plan
         ↓
-不满意 → 告诉 Claude 改 → 刷新浏览器
+artifact-tool presentation JSX 构建可编辑 slides
         ↓
-满意 → 文件 → 下载 → PPTX（完全可编辑）
+渲染 PNG / contact sheet / layout JSON
         ↓
-导出后检查中文字体，必要时手动替换一次
+修复弱页并重新验证
+        ↓
+outputs/<deck-title>.pptx
 ```
 
 **优点：**
-- 浏览器里的 Google Slides 就是最终效果，真正所见即所得
-- PPTX 完全可编辑
-- 完全免费（自部署，需一次性配置 Google API）
-- Claude CLI 和 Codex CLI 均可使用
+
+- 把内容叙事、设计系统和视觉 QA 放在同一条工作流里。
+- 可显式要求使用 `ui-ux-pro-max` 设计情报和 Open Design `design-profiles/`。
+- 适合商业计划、投资人 deck、技术方案、数据报告等需要专业成品感的任务。
+- PowerPoint 输出可编辑。
 
 **缺点：**
-- **中文字体问题**：导出 PPTX 时宋体/黑体会被替换为 Noto Sans 或 Arial，需导出后手动检查并替换字体
-- 需要一次性配置：Google Cloud 项目 + 开启 Slides API + OAuth 凭据
-- 复杂图表导出为图片（非原生 PPT 图表对象），不能在 PPT 里修改数据
 
-**配置步骤（一次性）：**
-1. 前往 Google Cloud Console，新建项目
-2. 开启 Google Slides API
-3. 创建 OAuth 2.0 凭据，下载 `credentials.json`
-4. 克隆 `matteoantoci/google-slides-mcp`，配置到 Claude/Codex CLI 的 MCP 设置中
-5. 首次运行时浏览器弹出授权页，点击允许
+- 需要 Codex 环境中的 `Presentations` 插件能力。
+- 生成前要把内容和设计约束讲清楚，否则插件会花时间补齐不明确的部分。
+- 最终仍需要人工检查字体、事实、logo 和敏感数据。
 
-**已知问题与处理：**
-- 导出 PPTX 后，打开 PowerPoint → 全选 → 字体替换 → 将 Arial/Noto Sans 换成目标中文字体（如微软雅黑、黑体）
+**适合场景：** 当前项目中“主题/文字内容 → 专业可编辑 PPTX”的主路径。
 
 ---
 
-### 5. Google Slides MCP（Composio）
+## 2. 本地 skills/pptx + pptxgenjs（备用）
 
-**工作流与方案 4 相同，区别在于认证方式**
+**工作流：**
+
+```text
+Claude Code / 本地 agent
+        ↓
+读取 skills/pptx/SKILL.md
+        ↓
+pptxgenjs 生成 .pptx
+        ↓
+thumbnail.py 生成缩略图
+        ↓
+人工指出问题，再改代码重新生成
+```
 
 **优点：**
-- 无需自己配置 Google Cloud，Composio 托管 OAuth
-- 支持 Claude Code、Codex、Cursor 全覆盖
+
+- 完全本地，可控，PPTX 可编辑。
+- `skills/pptx` 已包含读取、编辑、打包、缩略图等辅助脚本。
+- 适合 Claude Code 或没有 Codex `Presentations` 插件的环境。
 
 **缺点：**
-- 有免费额度限制，重度使用需付费
-- 中文字体问题同方案 4
+
+- 叙事编辑、版式节奏和 comeback rubric 需要手动要求。
+- QA 主要依赖缩略图和人工复查，不如 Presentations 插件完整。
+- Prompt 里容易把“设计档案”误当成固定模板，导致页面重复。
+
+**适合场景：** 离线生成、Claude Code 备用、需要直接控制 pptxgenjs 代码。
 
 ---
 
-### 6. Alai MCP（付费时的最优方案）
+## 3. Marp CLI 直接导出
 
-**GitHub：** `getalai/alai-mcp-server`
-
-**工作流：** Claude/Codex CLI → Alai MCP → Alai 在线编辑器（浏览器预览 + 编辑）→ 导出 PPTX/PDF
+**工作流：** VS Code 写 Marp MD → Marp Preview → `npm run export:all`
 
 **优点：**
-- 有自己的浏览器编辑器，所见即所得
-- 无需 Google 账号，无中文字体替换问题
-- 导出 PPTX 无需手动调字体
-- 可与 Notion、Stripe 等 MCP 联动，从多数据源生成 deck
+
+- 写作和预览最快。
+- PDF/HTML 导出稳定，适合提交和放映。
+- 中文渲染通常最稳。
 
 **缺点：**
-- **免费版只能导出 PDF，PPTX 导出需付费**（$16/月起）
-- 免费版仅 200-300 AI credits，数量有限
 
-**适合场景：** 愿意每月 $16，追求最干净工作流且不想处理字体问题。
+- PPTX 基本不是“原生可编辑对象”，更适合视觉成品。
+- 复杂 CSS 在导出链路中可能变形。
+
+**适合场景：** 快速草稿、课程展示、比赛提交 PDF、无需对方继续编辑。
+
+---
+
+## 4. Google Slides 路径
+
+有两种用法：
+
+1. **推荐用法**：先用 Codex `Presentations` 生成本地 PPTX，再通过 Google Drive 插件导入为 native Google Slides。
+2. **备用用法**：直接通过 Google Slides MCP 写入 Slides。
+
+**优点：**
+
+- 浏览器协作方便。
+- Google Slides 中可继续调整。
+
+**缺点：**
+
+- 字体从 Google Slides 导出 PPTX 时可能替换。
+- 直接 MCP 写 Slides 的视觉质量和验证闭环通常不如先生成本地 PPTX。
+- 复杂图表可能不是 PowerPoint 原生可编辑图表对象。
+
+**适合场景：** 最终交付必须在 Google Drive / Google Slides 内协作。
+
+---
+
+## 5. Office-PowerPoint-MCP-Server / pptx-generator-mcp
+
+这两类 MCP 可以生成可编辑 PPTX，但当前不作为主路径。
+
+**原因：**
+
+- 没有像 `Presentations` 那样强制 claim spine、design system、contact sheet 和 comeback rubric。
+- 需要更重的 Prompt 管理才能稳定产出专业视觉系统。
+- 对本项目已有的 Open Design 档案和 ui-ux-pro-max 设计情报没有天然整合。
+
+**适合场景：** 后续如果要做专门的 PowerPoint API 自动化，可以继续研究。
+
+---
+
+## 6. Alai MCP
+
+**优点：**
+
+- 在线编辑器体验顺滑。
+- 对不想处理本地依赖的人很友好。
+
+**缺点：**
+
+- PPTX 导出通常需要付费。
+- 工作流和本仓库的 `deck.md` / design-profile / Codex QA 体系不完全一致。
+
+**适合场景：** 愿意付费并接受在线平台工作流时使用。
 
 ---
 
 ## 当前推荐工作流
 
+```text
+写 deck.md
+        ↓
+用 ui-ux-pro-max --design-system 生成设计情报简报
+按需补查 style / typography / google-fonts / color / chart / ux
+        ↓
+选择 design-profiles/<profile>.md
+        ↓
+Codex Prompt 明确：
+使用 Presentations + artifact-tool presentation JSX
+不要使用 pptxgenjs 作为主路径
+        ↓
+生成 claim spine / design system / contact-sheet plan
+        ↓
+构建、渲染、修复、再验证
+        ↓
+输出 outputs/<deck-title>.pptx
 ```
-VS Code 写 Marp MD（内容草稿 + 结构）
-        ↓
-Claude CLI + matteoantoci Google Slides MCP
-把 MD 内容转入 Google Slides
-        ↓
-浏览器预览、迭代修改（告诉 Claude 改 → 刷新）
-        ↓
-满意 → Google Slides 下载 PPTX
-        ↓
-PowerPoint 打开 → 字体替换（宋体/黑体/微软雅黑）
-        ↓
-完成：可编辑 PPTX ✅
-```
+
+详见：`docs/pptx-master-workflow.md`。
 
 ---
 
 ## 未来升级路径
 
-- 如中文字体替换太麻烦，切换到 **Alai MCP 付费版**
-- 如需要纯离线生成，考虑改进 **GongRzhe MCP** 的 prompt 模板，预设固定样式风格
+- 如果经常要把 PPTX 转成 Google Slides：增加 Google Drive 导入步骤说明。
+- 如果要让 Claude Code 也稳定出高质量 deck：把 Presentations 的 claim spine / design-system / contact-sheet QA 思路迁移到 `skills/pptx` Prompt 模板。
+- 如果需要公司统一品牌模板：新增 `design-profiles/<brand>.md`，而不是每次在 Prompt 里临时描述品牌色。
