@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # MD2PPT Global Skill Installer
 # Run from the MD2PPT repo root after any update to skills or design-profiles.
-# Usage: bash install.sh
+#
+# Usage:
+#   bash install.sh           # local only
+#   bash install.sh --remote  # local + sync to remote SSH hosts
 
 set -e
 
@@ -9,36 +12,55 @@ MD2PPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_SKILLS="$HOME/.claude/skills"
 CODEX_SKILLS="$HOME/.codex/skills"
 
-install_to() {
+# Remote SSH hosts to sync when --remote is passed
+REMOTE_HOSTS=(frank)
+
+install_local() {
   local dest="$1"
   if [ ! -d "$dest" ]; then
     echo "  ⚠️  $dest does not exist — skipping"
     return
   fi
-
-  # deck-builder (includes bundled design-profiles)
   rm -rf "$dest/deck-builder"
   cp -r "$MD2PPT/skills/deck-builder" "$dest/"
   cp -r "$MD2PPT/design-profiles" "$dest/deck-builder/"
-
-  # ui-ux-pro-max
   rm -rf "$dest/ui-ux-pro-max"
   cp -r "$MD2PPT/skills/ui-ux-pro-max" "$dest/"
-
-  echo "  ✓  deck-builder + ui-ux-pro-max → $dest"
+  echo "  ✓  $dest"
 }
 
-echo "MD2PPT skill installer"
-echo "Source: $MD2PPT"
+install_remote() {
+  local host="$1"
+  echo "  syncing to $host..."
+  ssh "$host" "mkdir -p ~/.claude/skills ~/.codex/skills"
+  rsync -a --delete \
+    "$CLAUDE_SKILLS/deck-builder" \
+    "$CLAUDE_SKILLS/ui-ux-pro-max" \
+    "$host:~/.claude/skills/"
+  # sync to codex on remote only if the dir already exists
+  ssh "$host" "[ -d ~/.codex/skills ] && echo yes || echo no" | grep -q yes && \
+    rsync -a --delete \
+      "$CLAUDE_SKILLS/deck-builder" \
+      "$CLAUDE_SKILLS/ui-ux-pro-max" \
+      "$host:~/.codex/skills/" || true
+  echo "  ✓  $host"
+}
+
+echo "MD2PPT skill installer — source: $MD2PPT"
 echo ""
 
+echo "Local:"
 mkdir -p "$CLAUDE_SKILLS"
-install_to "$CLAUDE_SKILLS"
-install_to "$CODEX_SKILLS"
+install_local "$CLAUDE_SKILLS"
+install_local "$CODEX_SKILLS"
+
+if [[ "$1" == "--remote" ]]; then
+  echo ""
+  echo "Remote:"
+  for host in "${REMOTE_HOSTS[@]}"; do
+    install_remote "$host"
+  done
+fi
 
 echo ""
-echo "Done. Open a new Claude Code session for the updated skills to take effect."
-echo ""
-echo "Installed skills:"
-echo "  ~/.claude/skills/deck-builder/           (deck-builder + design-profiles bundled)"
-echo "  ~/.claude/skills/ui-ux-pro-max/           (design intelligence)"
+echo "Done. Open a new Claude Code session for updated skills to take effect."
