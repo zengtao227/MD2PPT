@@ -155,9 +155,17 @@ Produce `slide-plan.md` containing:
 - Per-slide: `claim`, `proof-object`, `layout-family`, `source`, `missing`
 - `appendix-plan`: what moves to notes or appendix, not the main deck
 
-**Confirmation behavior:**
-- Interactive session: present `slide-plan.md` to the user and wait for approval before writing deck.md
-- Batch / automated / non-interactive context: write `slide-plan.md`, log "slide-plan.md written — proceeding to deck.md", then continue
+**Confirmation behavior — HARD STOP in interactive sessions:**
+
+In an interactive session (human is present):
+1. Present the slide plan as a readable list: slide number, title, one-line claim, layout intent
+2. Ask explicitly: "这个大纲符合你的想法吗？有需要调整的幻灯片顺序、数量或重点吗？确认后我继续下一步。"
+3. **STOP. Do not write deck.md, do not run ui-ux-pro-max, do not call any tool until the user replies.**
+4. Only proceed to Step 3 after the user sends an explicit confirmation (e.g., "好的"、"继续"、"looks good", or change instructions).
+
+Rationale: skipping this confirmation forces an expensive full-rerun if the structure is wrong. The cost of pausing here is near zero.
+
+In a batch / automated / non-interactive context: write `slide-plan.md`, log "slide-plan.md written — proceeding to deck.md", then continue without waiting.
 
 ### Step 3 — Write deck.md
 
