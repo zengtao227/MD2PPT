@@ -75,8 +75,8 @@ Resolve dependencies in this order:
 
 | Dependency | Resolution |
 |------------|------------|
-| `ui-ux-pro-max` | Use the current repo's `skills/ui-ux-pro-max/scripts/search.py` if present; otherwise try `$HOME/.codex/skills/ui-ux-pro-max/scripts/search.py`, then `$HOME/.claude/skills/ui-ux-pro-max/scripts/search.py`. If none exists, synthesize a short design intelligence brief from the source and mark the tool as unavailable. |
-| `design-profiles/` | Use the current repo's `design-profiles/` if present. Otherwise look for `design-profiles/` inside the directory containing this SKILL.md (bundled by install.sh). If neither exists, use a lightweight visual contract written directly in `deck.md` and do not cite a missing profile file. |
+| `design-consultant` | Use the current repo's `skills/ui-ux-pro-max/scripts/search.py` if present; otherwise try `$HOME/.claude/skills/ui-ux-pro-max/scripts/search.py`, then `$HOME/.codex/skills/ui-ux-pro-max/scripts/search.py`. If none exists, synthesize a short design intelligence brief from the source and mark the tool as unavailable. |
+| `design-locks/` | Use the current repo's `design-locks/` if present. Otherwise look for `design-locks/` inside the directory containing this SKILL.md (bundled by install.sh). If neither exists, use a lightweight visual contract written directly in `deck.md` and do not cite a missing profile file. |
 | PPTX fallback | Use `skills/pptx/SKILL.md` only when it exists in the current repo. If absent, do not pretend the fallback is available. |
 | HTML engines | Use `guizang-ppt-skill` or `html-ppt-skill` only when the skill/tool is available in the active environment. If neither is available, explain the missing dependency or generate only the handoff prompt. |
 | MD2PPT docs | Treat `docs/pptx-master-workflow.md` and `docs/quality-gates.md` as optional project-level context. Outside MD2PPT, rely on this skill's reference files and the minimum QA checklist below instead. |
@@ -99,10 +99,10 @@ Never include file paths in a generation prompt unless those files actually exis
     Thesis, audience, per-slide: claim + proof object + source
         ↓
 [4] Design Intelligence
-    ui-ux-pro-max → style / palette / typography / chart grammar / UX risks
+    design-consultant → palette options (visual) → user confirms color direction
         ↓
-[5] Visual Contract
-    Select from design-profiles/, lock hex / typography / layout rules
+[5] Design Lock
+    Confirm structural lock from design-locks/ + record color overrides
         ↓
 [6] Generation  (environment-dependent — see Tool Routing)
         ↓
@@ -129,7 +129,7 @@ Skipping Step 2 produces information dumps, not presentations.
 
 **Hard constraints — never misattribute these roles:**
 - `ui-ux-pro-max` = design intelligence tool, NOT a PPTX generator
-- `design-profiles/` = visual contracts, NOT slide templates or generation engines
+- `design-locks/` = visual contracts, NOT slide templates or generation engines
 - pptxgenjs = Claude Code fallback only, NOT the Codex primary path
 - guizang-ppt-skill / html-ppt-skill = HTML secondary output only, NOT a PPTX replacement
 - Marp output = NOT a professional editable PPTX
@@ -176,38 +176,83 @@ Rules:
 - Every slide needs one primary `Proof object` (chart, diagram, table, big number, case)
 - Every number and logo needs a `Source`; write "missing" if unverifiable — never invent data
 
-### Step 4 — Design Intelligence
+### Step 4 — Design Consultation (Interactive)
 
-Run `ui-ux-pro-max` and distill a design brief. Read `references/design-workflow.md` for the full query protocol and how to translate Web/UI output into deck constraints.
+Run `design-consultant` (scripts: `skills/ui-ux-pro-max/scripts/search.py`). Read `references/design-workflow.md` for query protocol.
 
-Target output:
+**Present 2–3 palette options with visible colors — HARD STOP:**
+
+After running design-consultant, present options as a visual color table. For each option show actual hex swatches in an HTML block, not just hex codes:
+
+```html
+<!-- Generate assets/palette-preview.html and tell user to open it in browser -->
+<!-- Each option shows: background · primary text · accent · muted as color blocks -->
 ```
-Style direction | Semantic palette (primary/accent/bg/fg/muted/border) |
-Typography (Chinese + Latin) | Chart grammar | UX anti-patterns to avoid
+
+Format each option like this in the response:
+
+```
+方案 A — [风格名称]
+  背景   ████ #fafaf8   正文   ████ #0a0a0a
+  强调色 ████ #002FA7   辅助   ████ #6b6b6b
+  字体: Source Han Sans + Inter
+  情绪: 权威、精准、高对比
+  推荐 lock: swiss-klein-blue（结构层）
+
+方案 B — [风格名称]
+  背景   ████ #f1f3f5   正文   ████ #0a1f3d
+  强调色 ████ #4a7fc1   辅助   ████ #8a9ab0
+  字体: 思源宋体 + IBM Plex Sans
+  情绪: 学术、冷调、信息密度高
+  推荐 lock: guizang-indigo（结构层）
 ```
 
-### Step 5 — Select Visual Contract
+Note: the `████` blocks are Unicode full blocks — they render as colored rectangles in most terminals. For richer preview, generate `assets/palette-preview.html`.
 
-Read `references/design-workflow.md` for the full selection table.
-Read the `profile:` frontmatter fields in each `design-profiles/*.md` (suitable_for / tone / formality / color_scheme / avoid_for) to match profile to deck context.
+**Consultation is iterative:**
+- User can say "我想要更暖的色调" / "强调色换成橙色" / "更深的背景"
+- Adjust and re-present until user is satisfied
+- User can also ask for a mood board image (DALL-E 3) to preview the overall visual feel
 
-**Selection and confirmation — HARD STOP:**
+**STOP. Do not proceed to Step 5 until user explicitly says they are satisfied with a palette direction.**
 
-1. Based on the deck topic, audience, and Step 4 design intelligence, recommend the best-matching profile. Present a short table:
+The output of Step 4 is:
+- Confirmed color palette (hex values, semantic roles)
+- Confirmed typography direction (Chinese + Latin fonts)
+- Confirmed mood and style
+- Suggested design-lock for the structural layer
 
-   | 档案 | 推荐理由 | 不适合原因 |
-   |------|---------|----------|
-   | `swiss-klein-blue` | … | … |
-   | `guizang-indigo` | … | … |
-   | _(one more if relevant)_ | … | … |
+### Step 5 — Lock the Design (Structure Layer)
 
-2. State the recommendation clearly: "我推荐 **X**，因为……"
-3. **STOP. Do not write the Design Contract block, do not proceed to Step 5.5 or Step 6 until the user confirms the profile choice.**
+Step 4 confirmed the **color layer**. Step 5 selects a design-lock for the **structural layer** (typography rules, grid, spacing, chart grammar, forbidden patterns).
 
-After confirmation, append a `## Design Contract` block to `deck.md`:
+Read the frontmatter of each `design-locks/*.md` (suitable_for / tone / formality / density) to match structure to the confirmed mood.
+
+**Why Step 5 is still needed after Step 4:**
+Design-locks provide the structural DNA that is hard to define from scratch: font hierarchy, grid proportions, chart annotation rules, forbidden effects. Step 4 customizes color; Step 5 provides the structure that makes the deck look professionally composed.
+
+**Selection — present the recommendation, then STOP:**
+
+State: "基于你确认的配色方向，我推荐使用 **[lock名]** 的结构层，因为……"
+
+**STOP. Wait for user to confirm the lock choice.**
+
+After confirmation, write the Design Contract to `deck.md`. If Step 4 produced color overrides different from the lock's defaults, record them explicitly:
+
 ```markdown
 ## Design Contract
-- Profile: design-profiles/<profile>.md
+- Structure lock: design-locks/<lock>.md
+- Color overrides from consultation:
+  - accent: #[confirmed hex] (replaces lock default)
+  - background: #[confirmed hex] (if changed)
+  - _(list only values that differ from lock defaults)_
+- Must keep: lock typography hierarchy, grid grammar, chart grammar
+- May adapt: layout families to match proof objects
+- Must avoid: gradients, generic card grids, invented logos, unsupported metrics
+```
+```markdown
+## Design Contract
+- Profile: design-locks/<profile>.md
 - Must keep: profile hex values, typography hierarchy, layout grammar
 - May adapt: layout families to match proof objects
 - Must avoid: gradients, generic card grids, invented logos, unsupported metrics

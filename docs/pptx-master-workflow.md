@@ -43,7 +43,7 @@
     用 ui-ux-pro-max 查行业、风格、字体、配色、图表、UX 风险
         ↓
 [5] 视觉合同
-    选 design-profiles/ 中的 Open Design 档案，并形成 deck-brief
+    选 design-locks/ 中的 Open Design 档案，并形成 deck-brief
         ↓
 [5.5] 可选：AI 背景图生成
     纯色方案已够用？→ 跳过
@@ -172,7 +172,7 @@ Codex Presentations 生成 PPTX
 |----|-------------|------|
 | 内容层 | `deck.md` | 事实、顺序、主张、证据对象、数据来源 |
 | 设计情报层 | `skills/ui-ux-pro-max` | 查适合行业的风格、字体、颜色、图表和 UX 检查项 |
-| 视觉合同层 | `design-profiles/` | 把 Open Design 的设计语言落成 hex、字体、版式、禁用项 |
+| 视觉合同层 | `design-locks/` | 把 Open Design 的设计语言落成 hex、字体、版式、禁用项 |
 | 生成层 | Codex `Presentations` | 叙事整理、设计系统锁定、JSX 构建、渲染 QA、导出 PPTX |
 | 备用生成层 | `skills/pptx` + pptxgenjs | Claude Code 或离线场景备用 |
 | 快速草稿层 | Marp | 快速写作、预览、PDF/不可细编辑 PPTX 导出 |
@@ -290,7 +290,7 @@ python3 skills/ui-ux-pro-max/scripts/search.py "layout spacing contrast accessib
 
 ## 阶段三：选择 Open Design / design-profile
 
-从 `design-profiles/` 选一个作为视觉合同：
+从 `design-locks/` 选一个作为视觉合同：
 
 | 档案 | 风格 | 适合 |
 |------|------|------|
@@ -311,7 +311,7 @@ python3 skills/ui-ux-pro-max/scripts/search.py "layout spacing contrast accessib
 
 ```markdown
 ## Design Contract
-- Profile: design-profiles/swiss-klein-blue.md
+- Profile: design-locks/swiss-klein-blue.md
 - Must keep: profile hex values, typography hierarchy, straight-edge grid grammar
 - May adapt: layout families according to content proof objects
 - Must avoid: gradients, generic card grids, invented logos, unsupported metrics
@@ -332,7 +332,7 @@ python3 skills/ui-ux-pro-max/scripts/search.py "layout spacing contrast accessib
 
 [输入文件]
 - 内容源：deck.md
-- 设计档案：design-profiles/<profile>.md
+- 设计档案：design-locks/<profile>.md
 - 工作流参考：docs/pptx-master-workflow.md
 
 [目标]
@@ -415,7 +415,7 @@ skills/pptx/scripts/thumbnail.py 生成缩略图
 
 ```text
 使用本仓库 skills/pptx/SKILL.md 的 pptxgenjs 工作流。
-读取 deck.md 和 design-profiles/<profile>.md。
+读取 deck.md 和 design-locks/<profile>.md。
 生成 outputs/<deck-title>.pptx。
 生成后运行 skills/pptx/scripts/thumbnail.py 做缩略图检查。
 ```
@@ -459,7 +459,7 @@ skills/pptx/scripts/thumbnail.py 生成缩略图
 ```text
 MD2PPT/
 ├── deck.md                          # 内容源：主题、主张、证据、数据来源
-├── design-profiles/                 # Open Design 派生视觉合同
+├── design-locks/                 # Open Design 派生视觉合同
 │   ├── guizang-monocle.md           # 墨水经典，暖纸色底
 │   ├── guizang-indigo.md            # 靛蓝瓷，冷调科技感
 │   ├── swiss-klein-blue.md          # Klein Blue + 瑞士网格

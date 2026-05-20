@@ -1,6 +1,6 @@
 # Design Workflow: Intelligence → Visual Contract
 
-This reference covers Steps 4 and 5 of the pipeline: running `ui-ux-pro-max` to generate design intelligence, then selecting and applying a design profile from `design-profiles/`.
+This reference covers Steps 4 and 5 of the pipeline: running `ui-ux-pro-max` to generate design intelligence, then selecting and applying a design profile from `design-locks/`.
 
 ---
 
@@ -9,7 +9,7 @@ This reference covers Steps 4 and 5 of the pipeline: running `ui-ux-pro-max` to 
 | Layer | Tool / File | Role | What It Is NOT |
 |-------|-------------|------|----------------|
 | Design Intelligence | `skills/ui-ux-pro-max` | Generates design direction: style, palette, typography, chart grammar, UX risks | NOT a PPTX generator |
-| Visual Contract | `design-profiles/*.md` | Locks the chosen visual language as hard constraints: hex values, fonts, layout rules | NOT a slide template or generation engine |
+| Visual Contract | `design-locks/*.md` | Locks the chosen visual language as hard constraints: hex values, fonts, layout rules | NOT a slide template or generation engine |
 | Generation | Codex Presentations / pptxgenjs / HTML engine | Produces the actual PPTX or HTML deck using the above as constraints | Takes both as input |
 
 ---
@@ -32,7 +32,7 @@ fi
 
 If `UIUX_SEARCH` is empty, skip tool execution and write a concise design intelligence brief from the source material. Explicitly note that `ui-ux-pro-max` was unavailable.
 
-For visual contracts, use `design-profiles/` only when it exists in the active project. If it does not exist, write a minimal `## Design Contract` block directly in `deck.md` with palette, typography, layout grammar, and forbidden items.
+For visual contracts, use `design-locks/` only when it exists in the active project. If it does not exist, write a minimal `## Design Contract` block directly in `deck.md` with palette, typography, layout grammar, and forbidden items.
 
 ---
 
@@ -130,7 +130,7 @@ After selecting a profile, append this block to deck.md:
 
 ```markdown
 ## Design Contract
-- Profile: design-profiles/<profile-name>.md
+- Profile: design-locks/<profile-name>.md
 - Must keep: profile hex values, typography hierarchy, straight-edge grid grammar
 - May adapt: layout families to match content proof objects
 - Must avoid: gradients, generic card grids, invented logos, unsupported metrics

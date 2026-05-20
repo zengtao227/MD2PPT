@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # MD2PPT Global Skill Installer
-# Run from the MD2PPT repo root after any update to skills or design-profiles.
+# Run from the MD2PPT repo root after any update to skills or design-locks.
 #
 # Usage:
 #   bash install.sh           # local only
@@ -23,7 +23,7 @@ install_local() {
   fi
   rm -rf "$dest/deck-builder"
   cp -r "$MD2PPT/skills/deck-builder" "$dest/"
-  cp -r "$MD2PPT/design-profiles" "$dest/deck-builder/"
+  cp -r "$MD2PPT/design-locks" "$dest/deck-builder/"
   rm -rf "$dest/ui-ux-pro-max"
   cp -r "$MD2PPT/skills/ui-ux-pro-max" "$dest/"
   echo "  ✓  $dest"

@@ -85,7 +85,7 @@ python3 scripts/export-longimage.py outputs/deck.pptx outputs/deck-longimage.png
 
 **场景：** 有固定的企业/个人品牌色，每次不需要选 design-profile，直接用品牌模板。
 
-**实现：** 新建 `design-profiles/<brand-name>.md`，把品牌色写死，视为专属 profile 使用。
+**实现：** 新建 `design-locks/<brand-name>.md`，把品牌色写死，视为专属 profile 使用。
 
 ---
 

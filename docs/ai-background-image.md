@@ -120,7 +120,7 @@ no text, no people, clean and airy,
     用 ui-ux-pro-max 查行业、风格、字体、配色
         ↓
 [5] 视觉合同
-    选 design-profiles/<profile>.md
+    选 design-locks/<profile>.md
         ↓
 [5.5] 可选：生成 AI 背景图
     ┌─ 判断：现有纯色方案是否已足够？

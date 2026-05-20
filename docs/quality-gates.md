@@ -32,7 +32,7 @@ Checked after generation, before render QA.
 
 | Check | Pass Condition | Failure Action |
 |-------|---------------|----------------|
-| Design profile selected | One profile from `design-profiles/` is declared in `## Design Contract` | Select profile and append Design Contract block |
+| Design profile selected | One profile from `design-locks/` is declared in `## Design Contract` | Select profile and append Design Contract block |
 | Hex values respected | No color outside the profile's palette is introduced | Return to profile-defined palette |
 | Typography respected | Font families and weight hierarchy match the profile | Correct to profile fonts |
 | No gradients or shadows not in profile | Flat color system maintained unless profile explicitly allows depth | Remove unapproved effects |
