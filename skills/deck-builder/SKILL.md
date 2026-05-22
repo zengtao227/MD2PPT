@@ -1,11 +1,15 @@
 ---
 name: deck-builder
-description: Orchestrates a full-pipeline workflow for creating professional presentation decks from source materials — editable PPTX as the primary output, HTML deck as a secondary online-sharing output. This skill should be used when the task involves generating a new presentation deck from an article, book, knowledge document, engineering project materials, or any substantive source — specifically when slide planning (deck.md), design intelligence, visual contract, and verified output are needed. Do NOT trigger for small edits to existing slides (typo fixes, minor text changes), quick Marp/reveal.js previews, or requests that do not require a full deck planning and design workflow.
+description: Orchestrates professional presentation creation from source materials. In Codex net-new PPTX requests, this skill MUST run Presentation Director intake and brief confirmation before Codex Presentations. For Claude/offline/HTML paths it coordinates deck.md planning, design intelligence, visual contracts, and verified output. Do NOT trigger for small edits to existing slides, quick Marp/reveal.js previews, or requests that do not require a new deck workflow.
 ---
 
 # Deck Builder
 
-A workflow orchestration skill for building professional presentations. It enforces the full pipeline — from source material through slide planning, design intelligence, visual contract, to verified PPTX or HTML output.
+A workflow orchestration skill for building professional presentations.
+
+In Codex, this skill is the front door for net-new PPTX requests: run `Presentation Director` first, then hand the confirmed brief to the Codex Presentations plugin. Do not let Codex Presentations start from an unconfirmed prompt unless the user explicitly asks to skip the director.
+
+Outside Codex, this skill coordinates the fuller deck.md-centered workflow: source material through slide planning, design intelligence, visual contract, and verified PPTX or HTML output.
 
 This skill does NOT generate slides directly. It routes to the correct generation engine based on the active environment and target output format.
 
@@ -17,14 +21,15 @@ Before starting this pipeline, verify the request actually needs a new deck:
 
 | Request Type | Action |
 |-------------|--------|
-| New deck from source material | **Proceed with this pipeline** |
+| New PPTX from source material in Codex | **Run Presentation Director before Presentations** |
+| New deck from source material outside Codex | **Proceed with deck.md-centered pipeline** |
 | Slide plan review or deck.md revision | **Proceed with this pipeline** |
 | Single-slide text fix in existing deck | Handle directly — skip this pipeline |
 | QA pass on an existing generated deck | Handle directly — skip this pipeline |
 | Quick Marp / reveal.js preview | Handle directly — skip this pipeline |
 | Format-only change (color, font size) | Handle directly — skip this pipeline |
 
-If in doubt: does the request require producing or revising a `slide-plan.md` or `deck.md`? If yes, use this pipeline. If no, handle directly.
+If in doubt: is this a net-new presentation from substantive source material? If yes, use this pipeline. In Codex, start with Presentation Director. Outside Codex, use the deck.md-centered path.
 
 ---
 
@@ -32,9 +37,10 @@ If in doubt: does the request require producing or revising a `slide-plan.md` or
 
 **Use this skill when:**
 - Generating a new deck from an article, book, knowledge document, or engineering project materials
+- The user asks Codex to create a new PPTX / PowerPoint / presentation from source material
 - The request implies slide planning, deck.md authoring, or design system selection
 - The user asks for a professional, editable, or high-quality presentation
-- The user mentions "slide planner", "deck.md", "design profile", or "visual contract"
+- The user mentions "Presentation Director", "slide planner", "deck.md", "design lock", or "visual contract"
 
 **Do NOT trigger when:**
 - Fixing a typo or rewriting a single slide in an existing deck
@@ -75,17 +81,90 @@ Resolve dependencies in this order:
 
 | Dependency | Resolution |
 |------------|------------|
+| Presentation Director | Use `scripts/presentation_director.py` in the current repo if present; otherwise use `scripts/presentation_director.py` beside this SKILL.md. In Codex net-new PPTX requests, this is the first step before Presentations unless the user explicitly skips it or a confirmed brief already exists. |
 | `design-consultant` | Use the current repo's `skills/ui-ux-pro-max/scripts/search.py` if present; otherwise try `$HOME/.claude/skills/ui-ux-pro-max/scripts/search.py`, then `$HOME/.codex/skills/ui-ux-pro-max/scripts/search.py`. If none exists, synthesize a short design intelligence brief from the source and mark the tool as unavailable. |
-| `design-locks/` | Use the current repo's `design-locks/` if present. Otherwise look for `design-locks/` inside the directory containing this SKILL.md (bundled by install.sh). If neither exists, use a lightweight visual contract written directly in `deck.md` and do not cite a missing profile file. |
+| `design-locks/` | Use the current repo's `design-locks/` if present. Otherwise look for `design-locks/` inside the directory containing this SKILL.md (bundled by install.sh). If neither exists, use a lightweight visual contract written directly in `deck.md` and do not cite a missing lock file. |
 | PPTX fallback | Use `skills/pptx/SKILL.md` only when it exists in the current repo. If absent, do not pretend the fallback is available. |
-| HTML engines | Use `guizang-ppt-skill` or `html-ppt-skill` only when the skill/tool is available in the active environment. If neither is available, explain the missing dependency or generate only the handoff prompt. |
+| HTML engines | Use `html-ppt-skill` or `guizang-ppt-skill` only when the skill/tool is available in the active environment. If neither is available, explain the missing dependency or generate only the handoff prompt. |
 | MD2PPT docs | Treat `docs/pptx-master-workflow.md` and `docs/quality-gates.md` as optional project-level context. Outside MD2PPT, rely on this skill's reference files and the minimum QA checklist below instead. |
 
 Never include file paths in a generation prompt unless those files actually exist.
 
 ---
 
+## PPTX Workspace Rule
+
+For any project, keep all user-facing PPT artifacts in one project-local folder:
+
+```text
+PPTX/<task-slug>/
+```
+
+Do not scatter generated brief files, intake pages, contact sheets, QA summaries, revision requests, comparison files, or final PPTX/HTML outputs across the project root, `assets/`, or unrelated folders.
+
+Recommended structure:
+
+```text
+PPTX/<task-slug>/
+  sources/                # optional copied user assets
+  brief/                  # optional notes and source summaries
+  intake.html
+  brief-confirm.html
+  brief-confirmed.json
+  style-review.html
+  revision-request.json
+  compare.html
+  final-selection.json
+  v1/
+    final.pptx
+    contact-sheet.png
+    qa-summary.md
+  v2/
+    final.pptx
+    contact-sheet.png
+    qa-summary.md
+  final/
+    <deck-title>.pptx
+    final-report.md
+```
+
+Codex Presentations may still use its required internal scratch workspace under `outputs/<thread-id>/presentations/...`. That scratch space is not the user-facing project folder. Copy final deliverables and key review artifacts back into `PPTX/<task-slug>/`.
+
+---
+
 ## Pipeline Overview
+
+### Codex Net-New PPTX Path
+
+Use this path when Codex has the Presentations plugin available and the user asks for a new editable PPTX.
+
+```
+[1] Source Material
+    topic / links / files / folder / existing notes
+        ↓
+[2] Presentation Director intake
+    click-based audience, goal, source boundary, logo policy, image policy, output constraints
+        ↓
+[3] Brief Confirmation Gate  ← HARD STOP
+    user reviews the summarized plan and clicks "confirm"
+        ↓
+[4] Codex Presentations
+    confirmed brief → claim spine → design system → contact-sheet plan → editable PPTX
+        ↓
+[5] Render QA
+    previews + layout JSON + contact sheet + fix-and-rerender
+        ↓
+[6] Style Review
+    user chooses keep/current or visual revision directions
+        ↓
+[7] Optional Revised Versions + Compare
+        ↓
+PPTX/<task-slug>/final/<deck-title>.pptx
+```
+
+For this Codex path, do not pre-lock `design-locks/`, palette, or per-slide layout before v1 unless the user explicitly asks. The goal is to lock intent and source boundaries, then give Presentations room to produce a stronger first draft.
+
+### Claude / Offline / HTML Path
 
 ```
 [1] Source Material
@@ -109,8 +188,8 @@ Never include file paths in a generation prompt unless those files actually exis
 [7] Render QA
     Contact sheet + layout JSON + at least one fix-and-reverify cycle
         ↓
-outputs/<deck-title>.pptx   ← primary
-outputs/<deck-title>.html   ← secondary (HTML deck, when requested)
+PPTX/<task-slug>/final/<deck-title>.pptx   ← primary
+PPTX/<task-slug>/final/<deck-title>.html   ← secondary (HTML deck, when requested)
 ```
 
 Skipping Step 2 produces information dumps, not presentations.
@@ -121,24 +200,95 @@ Skipping Step 2 produces information dumps, not presentations.
 
 | Environment | Generation Path | Notes |
 |-------------|-----------------|-------|
-| Codex | Presentations plugin **(primary PPTX)** | `artifact-tool presentation-jsx` |
+| Codex net-new PPTX | Presentation Director → Presentations plugin **(primary PPTX)** | Intake + brief confirmation must happen before `artifact-tool presentation-jsx` |
+| Codex targeted edit / confirmed brief | Presentations plugin | Direct only when not creating a new deck or when `brief-confirmed.json` already exists |
 | Claude Code / offline | `skills/pptx` + pptxgenjs **(fallback PPTX)** | pptxgenjs |
-| Either | **guizang-ppt-skill** (primary HTML) | Reveal.js-based HTML deck — secondary output for online sharing |
-| Either | **html-ppt-skill** (alternative HTML) | 36 themes / 31 layouts / presenter mode — use when richer HTML layouts are needed |
+| Either | HTML deck skill, when installed | `html-ppt-skill` or `guizang-ppt-skill`; secondary output for online sharing |
 | Either | Marp | Quick draft / PDF only — not editable PPTX |
 
 **Hard constraints — never misattribute these roles:**
+- Presentation Director = Codex intake / confirmation / revision-choice layer, NOT a PPTX generator
 - `ui-ux-pro-max` = design intelligence tool, NOT a PPTX generator
 - `design-locks/` = visual contracts, NOT slide templates or generation engines
 - pptxgenjs = Claude Code fallback only, NOT the Codex primary path
-- guizang-ppt-skill / html-ppt-skill = HTML secondary output only, NOT a PPTX replacement
+- html-ppt-skill / guizang-ppt-skill = HTML secondary output only, NOT a PPTX replacement
 - Marp output = NOT a professional editable PPTX
 
 ---
 
 ## Execution Steps
 
-### Step 1 — Classify the Input
+### Codex Mode — Presentation Director First
+
+If the environment is Codex and the user asks for a net-new PPTX, use `scripts/presentation_director.py` before running Presentations.
+
+1. Resolve the script path:
+
+```bash
+# Prefer repo-local helper.
+python3 scripts/presentation_director.py --help
+
+# If outside MD2PPT but this skill is installed globally, use the bundled helper.
+python3 <deck-builder-skill-dir>/scripts/presentation_director.py --help
+```
+
+2. Initialize the director workspace:
+
+```bash
+python3 scripts/presentation_director.py init \
+  --task "<short task slug>" \
+  --topic "<inferred or user-provided topic>" \
+  --source "<resolved source path or URL>"
+```
+
+3. Start the local UI server:
+
+```bash
+python3 scripts/presentation_director.py serve --task "<short task slug>" --open-page intake
+```
+
+4. Do not ask the user to copy a URL. The intake page should open in the default browser. The user will submit intake choices, review the confirmation page, and then click confirm. If the page does not open, use:
+
+```bash
+python3 scripts/presentation_director.py open-page --task "<short task slug>" --page intake
+```
+
+5. Wait for confirmation:
+
+```bash
+python3 scripts/presentation_director.py wait --task "<short task slug>" --for confirmed
+```
+
+6. Generate the handoff prompt:
+
+```bash
+python3 scripts/presentation_director.py prompt --task "<short task slug>" --kind initial
+```
+
+7. Only now call Codex Presentations.
+
+After v1 is generated, render and open the style review page, wait for `revision.ready` if the user chooses a revision, then use:
+
+```bash
+python3 scripts/presentation_director.py render --task "<short task slug>" --open-page style-review
+python3 scripts/presentation_director.py wait --task "<short task slug>" --for revision
+python3 scripts/presentation_director.py prompt --task "<short task slug>" --kind revision
+```
+
+After revised versions are generated, render and open the comparison page:
+
+```bash
+python3 scripts/presentation_director.py render --task "<short task slug>" --open-page compare
+python3 scripts/presentation_director.py wait --task "<short task slug>" --for final-selection
+```
+
+Do not bypass this flow in an interactive Codex session unless the user explicitly says to skip it.
+
+## Claude / Offline / HTML Execution Steps
+
+The steps below are for environments without Codex Presentations, or for HTML output. Do not run them before v1 in Codex net-new PPTX mode unless the user explicitly asks for a deck.md/design-lock workflow.
+
+### Claude Step 1 — Classify the Input
 
 | Input Type | Key Questions | Reference |
 |------------|---------------|-----------|
@@ -146,7 +296,7 @@ Skipping Step 2 produces information dumps, not presentations.
 | Engineering project | What problem does it solve? Who are the stakeholders? | `references/engineering-project-deck.md` |
 | Topic only | What outcome does the user need — pitch, brief, report? | Proceed to slide planner directly |
 
-### Step 2 — Run the Slide Planner
+### Claude Step 2 — Run the Slide Planner
 
 Read `references/slide-planner.md` for the full planner protocol.
 
@@ -167,7 +317,7 @@ Rationale: skipping this confirmation forces an expensive full-rerun if the stru
 
 In a batch / automated / non-interactive context: write `slide-plan.md`, log "slide-plan.md written — proceeding to deck.md", then continue without waiting.
 
-### Step 3 — Write deck.md
+### Claude Step 3 — Write deck.md
 
 Read `references/source-to-deck.md` or `references/engineering-project-deck.md` for structure.
 
@@ -176,39 +326,67 @@ Rules:
 - Every slide needs one primary `Proof object` (chart, diagram, table, big number, case)
 - Every number and logo needs a `Source`; write "missing" if unverifiable — never invent data
 
-### Step 4 — 颜色层 (Color Layer)
+### Claude Step 4 — 颜色层 (Color Layer)
 
-Run `design-consultant` (scripts: `skills/ui-ux-pro-max/scripts/search.py`). Read `references/design-workflow.md` for query protocol.
+**Sub-step 4a — 行业情报查询（Industry Intelligence）**
 
-**Present 2–3 palette options via HTML preview — HARD STOP:**
+Extract the deck topic and industry from `deck.md` thesis. Then call `search.py` with the topic:
 
-After running design-consultant, do NOT present palettes as terminal text only. Instead:
-
-1. Write `assets/palettes.json` with the 2–3 options in this exact format:
-```json
-[
-  {
-    "id": "A",
-    "name": "风格名称",
-    "bg": "#hex",
-    "text": "#hex",
-    "accent": "#hex",
-    "muted": "#hex",
-    "font_zh": "思源黑体",
-    "font_en": "Inter",
-    "mood": "情绪描述",
-    "lock": "recommended-lock-id"
-  }
-]
+```bash
+# Path: skills/ui-ux-pro-max/scripts/search.py (or ~/.claude/skills/ui-ux-pro-max/scripts/search.py)
+python3 skills/ui-ux-pro-max/scripts/search.py "[deck topic / product type]" --domain color --json --max-results 3
 ```
 
-2. Run the preview script:
+Map each result to palette format:
+- `bg` ← result `Background`
+- `text` ← result `Foreground`
+- `accent` ← result `Primary`
+- `muted` ← result `Muted Foreground`
+- `mood` ← result `Notes` (trimmed to key phrase)
+- `font_zh` ← assign based on mood: formal/academic→"思源宋体", tech/modern→"思源黑体"
+- `font_en` ← assign based on mood: editorial→"IBM Plex Sans", modern→"Inter", elegant→"Plus Jakarta Sans"
+- `lock` ← assign based on color vibe: dark bg→"linear-dark", warm/paper→"editorial", cool academic→"academic", neutral→"swiss-klein-blue" or "notion-warm"
+- `id` ← generate a short slug like "industry-saas-indigo"
+
+**Note:** Filter out search results with very dark backgrounds (`Background` starts with `#0` or `#1` and very low luminance) unless the user explicitly wants dark mode — PPT slides read best on light backgrounds in daylit rooms.
+
+**Sub-step 4b — Write palettes.json**
+
+Write `assets/palettes.json` using the **object format** (supports industry context display in preview):
+
+```json
+{
+  "deck_industry": "[product type from search results, e.g. SaaS / Finance / Healthcare]",
+  "palettes": [
+    {
+      "id": "industry-saas-blue",
+      "name": "风格名称",
+      "zh": "中文风格名",
+      "category": "tech",
+      "bg": "#hex",
+      "text": "#hex",
+      "accent": "#hex",
+      "muted": "#hex",
+      "font_zh": "思源黑体",
+      "font_en": "Inter",
+      "mood": "情绪描述",
+      "lock": "recommended-lock-id"
+    }
+  ]
+}
+```
+
+**Sub-step 4c — HTML Preview — HARD STOP:**
+
+Run the preview script to generate the interactive palette selector:
+
 ```bash
 python3 scripts/preview_palette.py
-# 生成 assets/palette-preview.html
+# Generates assets/palette-preview.html
+# Shows: Claude's industry-matched recommendations + full 50-palette browsable library
 ```
 
-3. Tell the user: **"配色方案预览已生成，请在浏览器中打开 `assets/palette-preview.html` 查看真实色彩效果，选择后点击「确认此配色方案」，将确认内容粘贴回来继续。"**
+Tell the user: **"配色方案预览已生成，请在浏览器中打开 `assets/palette-preview.html`。顶部显示基于行业分析的推荐方案，下方可从50套精选库中自由选择。选好后点击「确认此配色方案」，将确认内容粘贴回来继续。"**
 
 If `scripts/preview_palette.py` is not available (outside MD2PPT repo), fall back to terminal text with `████` Unicode blocks — but always note the limitation.
 
@@ -225,7 +403,7 @@ The output of Step 4 is:
 - Confirmed mood and style
 - Suggested design-lock for the structural layer
 
-### Step 5 — 结构层 (Structure Layer)
+### Claude Step 5 — 结构层 (Structure Layer)
 
 颜色层（Step 4）已确认。结构层提供设计的骨架：字体层级、网格比例、图表标注规则、禁用效果。
 
@@ -241,19 +419,17 @@ python3 scripts/preview_locks.py
 python3 ~/.claude/skills/deck-builder/scripts/preview_locks.py
 ```
 
-运行后告知用户：**"结构层预览已生成，请在浏览器中打开 `assets/locks-preview.html`，点击左侧选项查看封面和内页结构，选好后点「确认此结构层 →」，将选择粘贴回来继续。"**
+运行后告知用户：**"结构层预览已生成，请在浏览器中打开 `assets/locks-preview.html`。预览默认为中性色，便于纯粹比较布局结构。如已在 Step 4 确认配色，可点「用我的配色预览」查看真实效果。选好后点「确认此结构层 →」，将选择粘贴回来继续。"**
 
 同时给出文字推荐（作为辅助说明，不替代 HTML 预览）：
 
-| 方案 | 风格 | 适合 | 不适合 |
-|------|------|------|--------|
-| Swiss · Klein Blue | 权威 · 精准 · 高对比 | 商业计划、投资人、路线图 | 文化类、叙事类 |
-| Linear Dark | 工程精密 · 现代科技 · 暗色 | SaaS、技术平台、工程演示 | 教学类、文化类 |
-| Academic Indigo | 冷调学术 · 信息密度高 | 技术方案、数据报告、答辩 | 温暖叙事类 |
-| Warm Paper | 叙事 · 温暖纸感 · 编辑感 | 路演、课程、观点类 | 纯工程类、数据密集 |
-| Notion Warm | 亲和 · 极简 · 文档感 | 内部汇报、文化类、轻量演示 | 投资人演示、高强度外部 |
-
-（选择时请用 lock ID：`swiss-klein-blue` / `linear-dark` / `guizang-indigo` / `guizang-monocle` / `notion-warm`）
+| Lock ID | 布局语法 | 适合 | 不适合 |
+|---------|----------|------|--------|
+| `swiss-klein-blue` | 边栏分割 · 严格栅格 · 精密层级 | 商业计划、投资人、路线图 | 文化类、叙事类 |
+| `linear-dark` | 卡片边框 · 高密度 · 代码块结构 | SaaS、技术平台、工程演示 | 教学类、文化类 |
+| `academic` | 双色块 · 数据表格 · 权威分割线 | 技术方案、数据报告、答辩 | 温暖叙事类 |
+| `editorial` | 引言竖栏 · 长文段落 · 纵向叙事 | 路演、课程、观点类 | 纯工程类、数据密集 |
+| `notion-warm` | 卡片列表 · 扁平层级 · 亲和结构 | 内部汇报、文化类、轻量演示 | 投资人演示、高强度外部 |
 
 推荐最匹配 Step 4 配色情绪的选项，说明理由。
 
@@ -278,14 +454,17 @@ python3 ~/.claude/skills/deck-builder/scripts/preview_locks.py
 
 **这是真正的 lock 时刻。** 颜色层 + 结构层都由用户明确选定后，生成过程不得引入任何未在 Design Contract 中声明的颜色、字体或效果。
 
-### Step 5.5 — AI Background Image (Optional)
+### Claude Step 5.5 — AI Background Image (Optional) — HARD STOP
 
-**Trigger this step only after the profile is confirmed.**
+**Trigger this step only after Step 5 structure lock is confirmed.**
 
-Ask the user one question:
-> "需要为封面和章节分隔页生成 AI 背景图吗？现有的纯色方案够用就可以跳过。"
+**HARD STOP — ask this question and wait for the user's reply before proceeding to Step 6:**
 
-**If user says skip / no:** proceed directly to Step 6.
+> "需要为封面和章节分隔页生成 AI 背景图吗？现有的纯色方案够用就可以跳过。（回复「跳过」或「需要」）"
+
+**Do NOT proceed to Step 6 until the user replies.** This step is skippable, but you must ask.
+
+**If user says skip / no / 跳过:** proceed directly to Step 6.
 
 **If user says yes:** read `docs/ai-background-image.md` for the full protocol, then:
 1. **Auto-construct the image prompt** — do NOT pass the user's raw instruction to the API. Build a rich DALL-E 3 prompt by combining:
@@ -297,23 +476,23 @@ Ask the user one question:
 2. Call DALL-E 3 via OpenAI images API (or Flux/SD if user specifies) — only for cover and section-divider slides
 3. Save generated images to `assets/` in the current project folder
 4. Note image paths — they will be referenced in Step 6 generation prompts
-5. Add a 遮罩 (semi-transparent overlay, 40–60% opacity, using the profile's background color) instruction to the generation prompt to ensure text readability
+5. Add a 遮罩 (semi-transparent overlay, 40–60% opacity, using the lock's background color) instruction to the generation prompt to ensure text readability
 
 Hard constraints (from `docs/ai-background-image.md`):
 - Abstract texture / geometry only — no scenes, people, faces, text
-- Image must use the profile's primary color family
+- Image must use the lock's primary color family
 - Only cover + section-divider slides get background images; content slides do not
 - Always build the full prompt internally — never pass a one-line user instruction directly to the image API
 
-### Step 6 — Generate
+### Claude Step 6 — Generate
 
 Read `references/prompt-templates.md` for ready-to-use prompts.
 
 - In Codex: use Template A (Presentations plugin)
 - In Claude Code: use Template B (pptxgenjs fallback)
-- HTML deck (either environment): use Template C (guizang-ppt-skill or html-ppt-skill)
+- HTML deck (either environment): use Template C (html-ppt-skill or guizang-ppt-skill)
 
-### Step 7 — Render QA
+### Claude Step 7 — Render QA
 
 Full gate definitions inside MD2PPT: `docs/quality-gates.md`. If that file is unavailable, apply this minimum checklist before declaring done:
 
@@ -321,7 +500,7 @@ Full gate definitions inside MD2PPT: `docs/quality-gates.md`. If that file is un
 - [ ] Contact sheet generated (PPTX) or browser full-screen test completed (HTML)
 - [ ] Layout JSON reviewed (overflow, font issues, spacing)
 - [ ] At least one "find issue → fix → re-render" cycle completed
-- [ ] Final output confirmed at `outputs/<deck-title>.pptx` or `outputs/<deck-title>.html`
+- [ ] Final output confirmed at `PPTX/<task-slug>/final/<deck-title>.pptx` or `PPTX/<task-slug>/final/<deck-title>.html`
 - [ ] Completion report includes: output path, render evidence, remaining risks
 
 ---

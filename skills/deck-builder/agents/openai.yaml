@@ -1,4 +1,8 @@
 interface:
   display_name: "Deck Builder"
-  short_description: "Plan and route professional deck generation"
-  default_prompt: "Use $deck-builder to turn my source material into a planned, designed presentation deck."
+  short_description: "Orchestrate professional PPTX and HTML deck creation"
+  brand_color: "#1A5D9A"
+  default_prompt: "Use $deck-builder to turn my source material into a professional deck with the right Codex or Claude workflow."
+
+policy:
+  allow_implicit_invocation: true

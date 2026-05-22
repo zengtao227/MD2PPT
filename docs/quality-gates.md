@@ -32,16 +32,16 @@ Checked after generation, before render QA.
 
 | Check | Pass Condition | Failure Action |
 |-------|---------------|----------------|
-| Design profile selected | One profile from `design-locks/` is declared in `## Design Contract` | Select profile and append Design Contract block |
-| Hex values respected | No color outside the profile's palette is introduced | Return to profile-defined palette |
-| Typography respected | Font families and weight hierarchy match the profile | Correct to profile fonts |
-| No gradients or shadows not in profile | Flat color system maintained unless profile explicitly allows depth | Remove unapproved effects |
+| Design lock selected | One lock from `design-locks/` is declared in `## Design Contract` | Select lock and append Design Contract block |
+| Hex values respected | No color outside the lock's palette is introduced | Return to lock-defined palette |
+| Typography respected | Font families and weight hierarchy match the lock | Correct to lock fonts |
+| No gradients or shadows not in lock | Flat color system maintained unless lock explicitly allows depth | Remove unapproved effects |
 | Layout variety maintained | No same major layout on 3+ consecutive slides | Break pattern with different layout family |
 | No generic 3-up card grid | Each slide has a layout that matches its proof object type | Replace with claim-focused layout from `layout-vocabulary.md` |
 | Chart annotation style | Direct annotation used; legend minimized or removed | Add direct labels, remove or reduce legend |
 | Architecture diagrams use editable shapes | No screenshot used where editable shapes are required | Rebuild as native shapes + connectors |
 
-**Minimum evidence:** `## Design Contract` block is present in `deck.md` with profile, must-keep, and must-avoid fields.
+**Minimum evidence:** `## Design Contract` block is present in `deck.md` with lock, must-keep, and must-avoid fields.
 
 ---
 
@@ -71,7 +71,7 @@ Checked after generation — mandatory before declaring done.
 | 16:9 aspect ratio correct | Slides render at correct ratio in full-screen mode | Fix CSS or slide dimensions |
 | Text overflow absent | No text clips or wraps unexpectedly | Fix font size or container width |
 | Visual rhythm consistent | No abrupt style break between slides | Check section openers and content slides |
-| Draft / preview HTML vs `outputs/*.html` not confused | Final output is in `outputs/`, not a temporary draft or preview location | Verify file path |
+| Draft / preview HTML vs final HTML not confused | Final output is in `PPTX/<task-slug>/final/`, not a temporary draft or preview location | Verify file path |
 
 **Minimum evidence:** Contact sheet path (PPTX) or browser screenshot (HTML) included in completion report.
 
@@ -85,10 +85,10 @@ Checked last, after render gate passes.
 
 | Check | Pass Condition | Failure Action |
 |-------|---------------|----------------|
-| Final PPTX at correct path | `outputs/<deck-title>.pptx` exists | Move or rename file |
-| Final HTML at correct path | `outputs/<deck-title>.html` exists (if HTML output was selected) | Move or rename file |
+| Final PPTX at correct path | `PPTX/<task-slug>/final/<deck-title>.pptx` exists | Move or rename file |
+| Final HTML at correct path | `PPTX/<task-slug>/final/<deck-title>.html` exists (if HTML output was selected) | Move or rename file |
 | `deck.md` saved | Source of truth file is committed or saved | Save before closing |
-| Sidecar artifacts saved | `slide-plan.md`, contact sheet, QA notes retained for traceability | Save in project workspace |
+| Sidecar artifacts saved | `slide-plan.md`, contact sheet, QA notes retained for traceability | Save or copy into `PPTX/<task-slug>/` |
 | Remaining risks documented | Any known open issues stated in completion report | Write risk list before handing off |
 
 **Minimum evidence:** Final completion report includes: output file absolute path, render evidence, remaining risks for human review.
@@ -104,10 +104,10 @@ These patterns are automatic gate failures. Do not declare done if any are prese
 | Slide title is "Market Analysis" | Content Gate | Topic label, not a conclusion claim |
 | Metric "grew 40% YoY" with no source | Content Gate | Unverified — must cite or mark missing |
 | 4 consecutive slides with three-panel layout | Design Gate | Layout variety rule violated |
-| New gradient introduced mid-deck | Design Gate | Profile violation |
+| New gradient introduced mid-deck | Design Gate | Design lock violation |
 | Text box rasterized as image | Render Gate | Not editable in PowerPoint |
 | Architecture diagram is a screenshot | Render Gate | Cannot be edited by user |
-| `outputs/deck.html` is a temporary draft or preview artifact | Output Gate | Non-final artifact confused with final output |
+| `PPTX/<task-slug>/final/deck.html` is a temporary draft or preview artifact | Output Gate | Non-final artifact confused with final output |
 | No contact sheet or browser screenshot | Render Gate | No render evidence |
 
 ---
@@ -117,7 +117,7 @@ These patterns are automatic gate failures. Do not declare done if any are prese
 | Gate | PPTX Required | HTML Required | Notes |
 |------|--------------|---------------|-------|
 | Content Gate | Yes | Yes | Same `deck.md` is source for both |
-| Design Gate | Yes | Yes | Profile applies to both; CSS variables for HTML |
+| Design Gate | Yes | Yes | Design lock applies to both; CSS variables for HTML |
 | Render Gate | Yes — contact sheet | Yes — browser screenshot | Evidence format differs |
 | Output Gate | Yes | Yes | Output paths differ; same completion report |
 

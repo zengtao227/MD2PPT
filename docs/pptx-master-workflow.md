@@ -29,39 +29,27 @@
 
 ```text
 [1] 内容源
-    主题 / 原始文字 / 数据 / 参考资料
-    （也可以从 URL / 文档提炼骨架，见 docs/roadmap.md 1.1）
+    主题 / 原始文字 / 数据 / 参考资料 / 代码仓库
         ↓
-[2] PPTX slide planner
-    先出大纲（页数 + 每页主标题）供确认，再继续
-    （见 docs/roadmap.md 1.2）
+[2] Presentation Director（Codex net-new PPTX）
+    点击式收集听众、目标、资料边界、logo、AI 生图、输出限制
         ↓
-[3] deck.md
-    写清 thesis、audience、每页 claim、proof object、source
+[3] brief confirmation gate
+    用户确认后才调用 Codex Presentations
         ↓
-[4] 设计情报
-    用 ui-ux-pro-max 查行业、风格、字体、配色、图表、UX 风险
+[4] Codex Presentations 生成
+    confirmed brief → claim spine → design system → contact-sheet plan
+    → artifact-tool presentation JSX → render → QA → export v1
         ↓
-[5] 视觉合同
-    选 design-locks/ 中的 Open Design 档案，并形成 deck-brief
+[5] style-review
+    看 contact sheet，选择保持、换配色、换结构、增强表现力或生成对比版本
         ↓
-[5.5] 可选：AI 背景图生成
-    纯色方案已够用？→ 跳过
-    想要独一无二的封面/章节页背景？→ 调用 DALL-E 3 / Flux 生成
-    （仅封面 + 章节切换页，内容页不用，详见 docs/ai-background-image.md）
+[6] final compare and selection
         ↓
-[6] Codex Presentations 生成
-    claim spine → design system → contact-sheet plan
-    → artifact-tool presentation JSX → render → QA → export PPTX
-        ↓
-[7] 迭代
-    看 contact sheet 和完整预览图，按页反馈，重新渲染验证
-        ↓
-[最终] outputs/<主题名>.pptx
-    可选追加：长图导出（见 docs/roadmap.md 1.3）
+[最终] PPTX/<task-slug>/final/<主题名>.pptx
 ```
 
-这个流程的关键不是“把 Markdown 套模板”，而是先把内容论证写清楚，再把视觉系统锁住，最后让 Presentations 插件按可编辑 PPTX 的方式构建和验证。
+这个流程的关键不是“把 Markdown 套模板”，而是先锁住目标、受众、资料边界和输出约束，再让 Presentations 插件负责叙事组织、视觉系统、可编辑构建和渲染 QA。
 
 ---
 
@@ -279,7 +267,7 @@ python3 skills/ui-ux-pro-max/scripts/search.py "layout spacing contrast accessib
 - Generated brief: 来自 `--design-system` 的候选 style / palette / typography / anti-patterns
 - Style: Swiss Modernism 2.0 / Minimalism / Editorial / Linear dark ...
 - Palette direction: 语义色板 primary / accent / background / foreground / muted / border
-- Typography direction: 中文优先 Noto Sans SC / Noto Serif SC，英文按 profile
+- Typography direction: 中文优先 Noto Sans SC / Noto Serif SC，英文按 lock
 - Chart grammar: 趋势用 line，排名用 horizontal bar，对比用 before/after
 - UX risks: 对比度、标题换行、卡片拥挤、页脚撞内容
 ```
@@ -288,7 +276,7 @@ python3 skills/ui-ux-pro-max/scripts/search.py "layout spacing contrast accessib
 
 ---
 
-## 阶段三：选择 Open Design / design-profile
+## 阶段三：选择 Open Design / design-lock
 
 从 `design-locks/` 选一个作为视觉合同：
 
@@ -296,23 +284,23 @@ python3 skills/ui-ux-pro-max/scripts/search.py "layout spacing contrast accessib
 |------|------|------|
 | `swiss-klein-blue` | Klein Blue + 瑞士网格 | 商业计划、执行报告、产品路线、竞赛答辩 |
 | `linear-dark` | 暗色 + 工程精准感 | SaaS 产品、技术平台、投资人 deck |
-| `guizang-indigo` | 靛蓝 + 冷调科技 / 研究感 | 技术方案、数据报告、AI 项目 |
-| `guizang-monocle` | 暖纸色 + 叙事编辑感 | 通用商业、课程汇报、观点型演示 |
+| `academic` | 靛蓝 + 冷调学术 / 研究感 | 技术方案、数据报告、AI 项目 |
+| `editorial` | 暖纸色 + 叙事编辑感 | 通用商业、课程汇报、观点型演示 |
 | `notion-warm` | 暖白 + 亲和极简 | 内部汇报、文化类、轻量展示 |
 
 选择规则：
 
 - 面向投资人或商业决策：优先 `swiss-klein-blue` / `linear-dark`
-- 技术、AI、数据、竞赛：优先 `guizang-indigo` / `swiss-klein-blue`
-- 课程、内部、文化、说明型：优先 `guizang-monocle` / `notion-warm`
-- 如果客户有品牌色，仍先选最接近的 profile，再把品牌色作为有限 accent，不要重写整套视觉系统。
+- 技术、AI、数据、竞赛：优先 `academic` / `swiss-klein-blue`
+- 课程、内部、文化、说明型：优先 `editorial` / `notion-warm`
+- 如果客户有品牌色，仍先选最接近的 lock，再把品牌色作为有限 accent，不要重写整套视觉系统。
 
 建议在 `deck.md` 后面补一个简短 `Design Contract`：
 
 ```markdown
 ## Design Contract
-- Profile: design-locks/swiss-klein-blue.md
-- Must keep: profile hex values, typography hierarchy, straight-edge grid grammar
+- Lock: design-locks/swiss-klein-blue.md
+- Must keep: lock hex values, typography hierarchy, straight-edge grid grammar
 - May adapt: layout families according to content proof objects
 - Must avoid: gradients, generic card grids, invented logos, unsupported metrics
 ```
@@ -332,13 +320,13 @@ python3 skills/ui-ux-pro-max/scripts/search.py "layout spacing contrast accessib
 
 [输入文件]
 - 内容源：deck.md
-- 设计档案：design-locks/<profile>.md
+- 设计档案：design-locks/<lock>.md
 - 工作流参考：docs/pptx-master-workflow.md
 
 [目标]
-- 输出可编辑 .pptx 到 outputs/<deck-title>.pptx
+- 输出可编辑 .pptx 到 PPTX/<task-slug>/final/<deck-title>.pptx
 - scratch / preview / layout / QA 文件放在 Presentations 技能自己的 workspace 中
-- 最终只把可交付 PPTX 放到 outputs/
+- 最终只把可交付 PPTX 放到 PPTX/<task-slug>/final/
 
 [叙事要求]
 - 先从 deck.md 写 claim spine：thesis、audience、one-line arc、每页 claim、proof object、source
@@ -347,7 +335,7 @@ python3 skills/ui-ux-pro-max/scripts/search.py "layout spacing contrast accessib
 - 缺失数据要在 source notes 或 omission notes 里说明
 
 [设计要求]
-- 读取 design-profile，把颜色、字体、层级、禁用项作为硬约束
+- 读取 design-lock，把颜色、字体、层级、禁用项作为硬约束
 - 结合 ui-ux-pro-max 的设计情报选择图表和版式
 - 建立 design-system：背景、字体、色板、图表语法、页码、脚注、kicker、layout families
 - 不要连续 3 页使用同一种大版式
@@ -385,7 +373,7 @@ python3 skills/ui-ux-pro-max/scripts/search.py "layout spacing contrast accessib
 | 数据页弱 | `第 7 页把 KPI 做成主 proof object，数字 56pt，右侧加 2 行解释，不要再放四个小卡。` |
 | 文字太多 | `第 2 页正文压成 3 个短句，每句不超过 16 个汉字。` |
 | 图表不清楚 | `第 6 页去掉图例，改成直接标注，并把横轴标签减少到 4 个。` |
-| 风格跑偏 | `第 8 页回到 design-profile 的 paper / ink / accent，不要新增渐变或阴影。` |
+| 风格跑偏 | `第 8 页回到 design-lock 的 paper / ink / accent，不要新增渐变或阴影。` |
 
 每次迭代后都要求：
 
@@ -400,7 +388,7 @@ python3 skills/ui-ux-pro-max/scripts/search.py "layout spacing contrast accessib
 只有在不用 Codex `Presentations` 插件时，才走这条路。
 
 ```text
-deck.md + design-profile
+deck.md + design-lock
     ↓
 Claude Code 读取 skills/pptx/SKILL.md
     ↓
@@ -415,8 +403,8 @@ skills/pptx/scripts/thumbnail.py 生成缩略图
 
 ```text
 使用本仓库 skills/pptx/SKILL.md 的 pptxgenjs 工作流。
-读取 deck.md 和 design-locks/<profile>.md。
-生成 outputs/<deck-title>.pptx。
+读取 deck.md 和 design-locks/<lock>.md。
+生成 PPTX/<task-slug>/final/<deck-title>.pptx。
 生成后运行 skills/pptx/scripts/thumbnail.py 做缩略图检查。
 ```
 
@@ -444,10 +432,10 @@ skills/pptx/scripts/thumbnail.py 生成缩略图
 ```text
 1. 写 deck.md：每页 claim + proof object + source
 2. 用 ui-ux-pro-max 查 5 类信息：style / typography / color / chart / ux
-3. 选一个 design-profile，作为 Open Design 视觉合同
+3. 选一个 design-lock，作为 Open Design 视觉合同
 4. 在 Codex Prompt 中强制使用 Presentations + artifact-tool presentation JSX
 5. 要求 claim spine、design-system、contact-sheet plan、render QA、至少一轮修复
-6. 输出 outputs/<主题名>.pptx
+6. 输出 PPTX/<task-slug>/final/<主题名>.pptx
 ```
 
 这就是当前最顺畅的高质量 PPTX 工作流。
@@ -460,8 +448,8 @@ skills/pptx/scripts/thumbnail.py 生成缩略图
 MD2PPT/
 ├── deck.md                          # 内容源：主题、主张、证据、数据来源
 ├── design-locks/                 # Open Design 派生视觉合同
-│   ├── guizang-monocle.md           # 墨水经典，暖纸色底
-│   ├── guizang-indigo.md            # 靛蓝瓷，冷调科技感
+│   ├── editorial.md                 # 暖纸叙事，编辑感
+│   ├── academic.md                  # 靛蓝学术，冷调研究感
 │   ├── swiss-klein-blue.md          # Klein Blue + 瑞士网格
 │   ├── linear-dark.md               # 工程暗色，精准感
 │   └── notion-warm.md               # 暖白极简
@@ -477,7 +465,7 @@ MD2PPT/
 │   ├── competitive-analysis-pi.md   # 竞品分析：pi.inc vs DeepVinci
 │   ├── workflow-with-open-design.md # Open Design 集成说明
 │   └── pptx-generation-schemes.md  # 方案对比
-└── outputs/                         # 最终导出（gitignore）
+└── PPTX/                            # 每次生成的用户可见工作区（gitignore）
     ├── deck.pptx
     ├── deck.pdf
     └── deck-longimage.png           # 可选：长图导出
