@@ -388,6 +388,7 @@ Final output:
 
 ```text
 PPTX/<task-slug>/final/<deck-title>.pptx
+PPTX/<task-slug>/final/<deck-title>.html
 PPTX/<task-slug>/final/final-report.md
 ```
 
@@ -395,6 +396,7 @@ The final report should include:
 
 - selected version
 - final PPTX absolute path
+- final HTML companion absolute path
 - contact sheet path
 - QA evidence
 - remaining risks
@@ -823,6 +825,7 @@ python3 scripts/presentation_director.py wait --task "<task-slug>" --for revisio
 python3 scripts/presentation_director.py wait --task "<task-slug>" --for final-selection
 python3 scripts/presentation_director.py prompt --task "<task-slug>" --kind initial
 python3 scripts/presentation_director.py prompt --task "<task-slug>" --kind revision
+python3 scripts/presentation_director.py share-html --task "<task-slug>" --version "<selected-version>"
 ```
 
 Possible endpoints:
@@ -882,22 +885,28 @@ PPTX/<task-slug>/
     final-selected.ready
   v1/
     final.pptx
+    slides/
+      slide-001.png
+      slide-002.png
     contact-sheet.png
     qa-summary.md
   v2/
     final.pptx
+    slides/
     contact-sheet.png
     qa-summary.md
   v3/
     final.pptx
+    slides/
     contact-sheet.png
     qa-summary.md
   final/
     <deck-title>.pptx
+    <deck-title>.html
     final-report.md
 ```
 
-Codex Presentations may still use its required internal scratch workspace under `outputs/<thread-id>/presentations/...`. The user-facing brief, versions, contact sheets, QA summaries, comparisons, and final deliverable must be saved or copied into `PPTX/<task-slug>/`.
+Codex Presentations may still use its required internal scratch workspace under `outputs/<thread-id>/presentations/...`. The user-facing brief, versions, per-slide preview images, contact sheets, QA summaries, comparisons, final PPTX, and final HTML companion must be saved or copied into `PPTX/<task-slug>/`.
 
 ## Brief JSON Shape
 
@@ -1005,10 +1014,12 @@ Rules:
 Output:
 - Use the Presentations internal scratch workspace as required by the plugin.
 - Copy editable PPTX to `PPTX/<task-slug>/v1/final.pptx`.
+- Copy per-slide preview PNGs to `PPTX/<task-slug>/v1/slides/`.
 - Copy contact sheet and concise QA summary to `PPTX/<task-slug>/v1/`.
 - Generate layout JSON in the Presentations workspace.
 - Complete at least one fix-and-rerender cycle.
-- Return PPTX path, contact sheet path, QA summary, and remaining risks.
+- Generate a view-only HTML companion at `PPTX/<task-slug>/final/<deck-title>.html` after final selection.
+- Return PPTX path, HTML companion path, contact sheet path, QA summary, and remaining risks.
 ```
 
 ## Revision Handoff Prompt Pattern
@@ -1038,8 +1049,10 @@ Change:
 Render and QA:
 - use the Presentations internal scratch workspace as required by the plugin
 - copy revised PPTX to `PPTX/<task-slug>/v2/final.pptx` or `PPTX/<task-slug>/v3/final.pptx`
+- copy per-slide preview PNGs to the version's `slides/` folder
 - copy contact sheet and concise QA summary to the same version folder
 - compare against v1
+- regenerate the view-only HTML companion from the selected version's per-slide previews after final selection
 - document what changed and any remaining risks
 ```
 
@@ -1060,7 +1073,7 @@ Do not:
 - Start generation immediately after intake selection without confirmation.
 - Ask the user to copy/paste JSON in the primary flow.
 - Lock design structure before first draft unless the user explicitly asks.
-- Treat preview HTML as final HTML deck.
+- Treat intake, style-review, compare, or other preview HTML as the final share HTML companion or final HTML deck.
 - Fabricate logos, official marks, screenshots, product UI, customer marks, or metrics.
 - Use AI-generated images without the confirmed policy.
 

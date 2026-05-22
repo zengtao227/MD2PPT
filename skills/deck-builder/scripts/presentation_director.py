@@ -5,14 +5,17 @@ This script does not generate PPTX files. It creates a small local UI for:
 1. intake choices before generation,
 2. brief confirmation before calling Presentations,
 3. visual revision choices after v1,
-4. final version selection.
+4. final version selection,
+5. view-only HTML companions from rendered slide previews.
 """
 
 from __future__ import annotations
 
 import argparse
+import base64
 import html
 import json
+import mimetypes
 import os
 import re
 import shutil
@@ -32,6 +35,7 @@ JsonDict = dict[str, Any]
 
 DEFAULT_PORT: int = 8765
 DEFAULT_HOST: str = "127.0.0.1"
+IMAGE_EXTENSIONS: set[str] = {".png", ".jpg", ".jpeg", ".webp"}
 STATUS_FILES: dict[str, str] = {
     "confirmed": "confirmed.ready",
     "revision": "revision.ready",
@@ -303,6 +307,11 @@ def write_text(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def natural_sort_key(path: Path) -> list[tuple[int, int | str]]:
+    parts: list[str] = re.split(r"(\d+)", path.name.lower())
+    return [(0, int(part)) if part.isdigit() else (1, part) for part in parts]
+
+
 def touch_status(task_dir: Path, status_name: str) -> Path:
     filename: str | None = STATUS_FILES.get(status_name)
     if filename is None:
@@ -526,6 +535,162 @@ def first_form_value(form: dict[str, list[str]], key: str, default: str) -> str:
     return values[0]
 
 
+def candidate_slide_dirs(version_dir: Path) -> list[Path]:
+    return [
+        version_dir / "slides",
+        version_dir / "preview",
+        version_dir / "previews",
+        version_dir / "rendered-slides",
+        version_dir / "html-assets",
+    ]
+
+
+def collect_slide_images(version_dir: Path, explicit_dir: Path | None = None) -> list[Path]:
+    search_dirs: list[Path] = [explicit_dir] if explicit_dir else candidate_slide_dirs(version_dir)
+    for slide_dir in search_dirs:
+        if slide_dir is None or not slide_dir.exists() or not slide_dir.is_dir():
+            continue
+        images: list[Path] = [
+            path
+            for path in slide_dir.iterdir()
+            if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS
+        ]
+        if images:
+            return sorted(images, key=natural_sort_key)
+    return []
+
+
+def image_data_uri(path: Path) -> str:
+    mime_type: str = mimetypes.guess_type(path.name)[0] or "image/png"
+    encoded: str = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:{mime_type};base64,{encoded}"
+
+
+def build_share_html(title: str, slide_images: list[Path], source_pptx: Path | None = None) -> str:
+    generated_at: str = datetime.now().isoformat(timespec="seconds")
+    slides: list[str] = []
+    for index, image_path in enumerate(slide_images, start=1):
+        slides.append(
+            f"""<section class="slide" id="slide-{index}">
+  <div class="slide-number">{index:02d} / {len(slide_images):02d}</div>
+  <img src="{image_data_uri(image_path)}" alt="Slide {index}">
+</section>"""
+        )
+    source_note: str = (
+        f"<p>Source PPTX: <code>{html.escape(str(source_pptx))}</code></p>"
+        if source_pptx
+        else ""
+    )
+    return f"""<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{html.escape(title)}</title>
+  <style>
+    :root {{
+      color-scheme: dark;
+      --bg: #111;
+      --panel: #1b1b1b;
+      --ink: #f6f6f6;
+      --muted: #aaa;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif;
+    }}
+    header {{
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 20px;
+      background: rgba(17, 17, 17, .92);
+      border-bottom: 1px solid #2a2a2a;
+      backdrop-filter: blur(8px);
+    }}
+    h1 {{ margin: 0; font-size: 16px; font-weight: 650; }}
+    .meta {{ color: var(--muted); font-size: 12px; }}
+    main {{
+      display: grid;
+      gap: 28px;
+      padding: 24px;
+      max-width: 1280px;
+      margin: 0 auto;
+    }}
+    .slide {{
+      position: relative;
+      background: var(--panel);
+      border: 1px solid #2a2a2a;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, .35);
+    }}
+    .slide img {{
+      display: block;
+      width: 100%;
+      height: auto;
+    }}
+    .slide-number {{
+      position: absolute;
+      right: 10px;
+      top: 8px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, .56);
+      color: #fff;
+      font-size: 11px;
+    }}
+    footer {{
+      padding: 22px 24px 36px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }}
+    code {{ color: #ddd; }}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>{html.escape(title)}</h1>
+    <div class="meta">{len(slide_images)} slides · generated {html.escape(generated_at)}</div>
+  </header>
+  <main>
+    {''.join(slides)}
+  </main>
+  <footer>
+    <p>View-only HTML companion generated from rendered slide previews. Edit the PPTX source, then regenerate this HTML after changes.</p>
+    {source_note}
+  </footer>
+</body>
+</html>
+"""
+
+
+def write_share_html(
+    task_dir: Path,
+    version_dir: Path,
+    title: str,
+    explicit_slides_dir: Path | None = None,
+    output_path: Path | None = None,
+) -> Path:
+    slide_images: list[Path] = collect_slide_images(version_dir, explicit_slides_dir)
+    if not slide_images:
+        searched: str = ", ".join(str(path) for path in candidate_slide_dirs(version_dir))
+        raise ValueError(f"No per-slide preview images found. Searched: {searched}")
+    final_dir: Path = task_dir / "final"
+    final_dir.mkdir(parents=True, exist_ok=True)
+    target: Path = output_path or final_dir / f"{slugify(title)}.html"
+    source_pptx: Path = version_dir / "final.pptx"
+    html_text: str = build_share_html(title, slide_images, source_pptx if source_pptx.exists() else None)
+    write_text(target, html_text)
+    return target
+
+
 def render_intake(task_dir: Path) -> str:
     draft: JsonDict = read_json(task_dir / "brief-draft.json")
     current: JsonDict = read_json(task_dir / "intake-selection.json", draft)
@@ -746,10 +911,12 @@ Rules:
 Output:
 - Use the Presentations internal scratch workspace as required by the plugin.
 - Copy the editable PPTX to {task_dir / "v1" / "final.pptx"}.
+- Copy per-slide preview PNGs to {task_dir / "v1" / "slides"}.
 - Copy the contact sheet and a concise QA summary to {task_dir / "v1"}.
 - Generate layout JSON and QA notes in the Presentations workspace.
 - Write a concise QA summary to {task_dir / "v1" / "qa-summary.md"}.
-- Return PPTX path, contact sheet path, QA summary, and remaining risks.
+- After final selection, generate a view-only HTML companion at {task_dir / "final" / (task_dir.name + ".html")} from the selected version's per-slide previews.
+- Return PPTX path, HTML companion path, contact sheet path, QA summary, and remaining risks.
 """
 
 
@@ -781,8 +948,10 @@ Change only the selected visual directions:
 Render and QA:
 - use the Presentations internal scratch workspace as required by the plugin
 - copy revised PPTX under {task_dir / "v2" / "final.pptx"} unless generating multiple versions
+- copy per-slide preview PNGs into the version's `slides/` folder
 - copy contact sheet and QA summary into the same version folder
 - compare against v1
+- regenerate the final view-only HTML companion from the selected version's per-slide previews after final selection
 - document what changed and remaining risks
 """
 
@@ -846,20 +1015,30 @@ class DirectorHandler(BaseHTTPRequestHandler):
             self.redirect("/revision-saved")
         elif parsed.path == "/api/final-selection":
             selected_version: str = first_form_value(form, "selected_version", "v1")
-            selected_pptx: Path = self.task_dir / selected_version / "final.pptx"
+            selected_version_dir: Path = self.task_dir / selected_version
+            selected_pptx: Path = selected_version_dir / "final.pptx"
             final_dir: Path = self.task_dir / "final"
             final_pptx: Path = final_dir / f"{self.task_dir.name}.pptx"
             if selected_pptx.exists():
                 final_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(selected_pptx, final_pptx)
+            final_html: Path | None = None
+            share_html_error: str = ""
+            try:
+                final_html = write_share_html(self.task_dir, selected_version_dir, self.task_dir.name)
+            except ValueError as exc:
+                share_html_error = str(exc)
             payload: JsonDict = {
                 "version": "0.1",
                 "selected_version": selected_version,
                 "selected_pptx": str(selected_pptx),
                 "final_pptx": str(final_pptx if final_pptx.exists() else selected_pptx),
+                "final_html": str(final_html) if final_html else "",
                 "notes": first_form_value(form, "notes", "").strip(),
                 "selected_at": datetime.now().isoformat(timespec="seconds"),
             }
+            if share_html_error:
+                payload["share_html_error"] = share_html_error
             write_json(self.task_dir / "final-selection.json", payload)
             touch_status(self.task_dir, "final-selection")
             self.redirect("/final-selected")
@@ -1014,6 +1193,16 @@ def command_open_page(args: argparse.Namespace) -> None:
     open_director_page(args.host, args.port, args.page)
 
 
+def command_share_html(args: argparse.Namespace) -> None:
+    task_dir: Path = resolve_task_dir(args)
+    version_dir: Path = task_dir / args.version
+    slides_dir: Path | None = Path(args.slides_dir).expanduser().resolve() if args.slides_dir else None
+    output_path: Path | None = Path(args.output).expanduser().resolve() if args.output else None
+    title: str = args.title or task_dir.name
+    target: Path = write_share_html(task_dir, version_dir, title, slides_dir, output_path)
+    print(f"Share HTML written: {target}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description="Presentation Director helper for Codex + Presentations workflows."
@@ -1067,6 +1256,14 @@ def build_parser() -> argparse.ArgumentParser:
     open_parser.add_argument("--host", default=DEFAULT_HOST, help=f"Host. Default: {DEFAULT_HOST}")
     open_parser.add_argument("--port", default=DEFAULT_PORT, type=int, help=f"Port. Default: {DEFAULT_PORT}")
     open_parser.set_defaults(func=command_open_page)
+
+    share_parser = subparsers.add_parser("share-html", help="Build a view-only final HTML companion from per-slide preview images.")
+    share_parser.add_argument("--task", required=True, help="Task slug or title.")
+    share_parser.add_argument("--version", default="v1", help="Version folder under PPTX/<task-slug>/. Default: v1.")
+    share_parser.add_argument("--slides-dir", help="Optional explicit directory containing per-slide PNG/JPG/WebP previews.")
+    share_parser.add_argument("--title", default="", help="Optional HTML title and output filename slug.")
+    share_parser.add_argument("--output", help="Optional output HTML path. Default: PPTX/<task-slug>/final/<title>.html.")
+    share_parser.set_defaults(func=command_share_html)
 
     return parser
 

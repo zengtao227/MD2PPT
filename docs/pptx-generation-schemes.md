@@ -56,6 +56,7 @@ artifact-tool presentation JSX 构建可编辑 slides
 修复弱页并重新验证
         ↓
 PPTX/<task-slug>/final/<deck-title>.pptx
+PPTX/<task-slug>/final/<deck-title>.html
 ```
 
 **优点：**
@@ -63,7 +64,7 @@ PPTX/<task-slug>/final/<deck-title>.pptx
 - 把内容叙事、设计系统和视觉 QA 放在同一条工作流里。
 - 可显式要求使用 `ui-ux-pro-max` 设计情报和 Open Design `design-locks/`。
 - 适合商业计划、投资人 deck、技术方案、数据报告等需要专业成品感的任务。
-- PowerPoint 输出可编辑。
+- PowerPoint 输出可编辑；HTML companion 用于简单分享，不作为编辑源。
 
 **缺点：**
 
@@ -196,7 +197,7 @@ Codex Prompt 明确：
         ↓
 构建、渲染、修复、再验证
         ↓
-输出 `PPTX/<task-slug>/final/<deck-title>.pptx`
+输出 `PPTX/<task-slug>/final/<deck-title>.pptx` 和 `PPTX/<task-slug>/final/<deck-title>.html`
 ```
 
 详见：`docs/pptx-master-workflow.md`。

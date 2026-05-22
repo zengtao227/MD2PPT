@@ -85,13 +85,14 @@ Checked last, after render gate passes.
 
 | Check | Pass Condition | Failure Action |
 |-------|---------------|----------------|
-| Final PPTX at correct path | `PPTX/<task-slug>/final/<deck-title>.pptx` exists | Move or rename file |
-| Final HTML at correct path | `PPTX/<task-slug>/final/<deck-title>.html` exists (if HTML output was selected) | Move or rename file |
+| Final PPTX at correct path | `PPTX/<task-slug>/final/<deck-title>.pptx` exists for PPTX output | Move or rename file |
+| Final HTML companion at correct path | `PPTX/<task-slug>/final/<deck-title>.html` exists for PPTX output | Generate from selected version's per-slide preview images |
+| Final HTML deck at correct path | `PPTX/<task-slug>/final/<deck-title>.html` exists for HTML-deck-only output | Move or rename file |
 | `deck.md` saved | Source of truth file is committed or saved | Save before closing |
 | Sidecar artifacts saved | `slide-plan.md`, contact sheet, QA notes retained for traceability | Save or copy into `PPTX/<task-slug>/` |
 | Remaining risks documented | Any known open issues stated in completion report | Write risk list before handing off |
 
-**Minimum evidence:** Final completion report includes: output file absolute path, render evidence, remaining risks for human review.
+**Minimum evidence:** Final completion report includes: PPTX absolute path when applicable, HTML path, render evidence, remaining risks for human review.
 
 ---
 

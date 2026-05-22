@@ -117,18 +117,27 @@ PPTX/<task-slug>/
   final-selection.json
   v1/
     final.pptx
+    slides/
+      slide-001.png
+      slide-002.png
     contact-sheet.png
     qa-summary.md
   v2/
     final.pptx
+    slides/
     contact-sheet.png
     qa-summary.md
   final/
     <deck-title>.pptx
+    <deck-title>.html
     final-report.md
 ```
 
-Codex Presentations may still use its required internal scratch workspace under `outputs/<thread-id>/presentations/...`. That scratch space is not the user-facing project folder. Copy final deliverables and key review artifacts back into `PPTX/<task-slug>/`.
+Codex Presentations may still use its required internal scratch workspace under `outputs/<thread-id>/presentations/...`. That scratch space is not the user-facing project folder. Copy final deliverables, per-slide preview images, and key review artifacts back into `PPTX/<task-slug>/`.
+
+Every final PPTX deliverable must also have a view-only HTML companion at `PPTX/<task-slug>/final/<deck-title>.html`, generated from rendered slide previews. This companion is for simple sharing only; edit the PPTX and regenerate the companion after changes.
+
+Final PPTX files are the editable source of record. For small changes, use manual PowerPoint editing or Codex Presentations targeted-edit instead of regenerating the full deck. Save targeted edits as a new version folder and regenerate the HTML companion from the updated render previews.
 
 ---
 
@@ -160,6 +169,7 @@ Use this path when Codex has the Presentations plugin available and the user ask
 [7] Optional Revised Versions + Compare
         ↓
 PPTX/<task-slug>/final/<deck-title>.pptx
+PPTX/<task-slug>/final/<deck-title>.html
 ```
 
 For this Codex path, do not pre-lock `design-locks/`, palette, or per-slide layout before v1 unless the user explicitly asks. The goal is to lock intent and source boundaries, then give Presentations room to produce a stronger first draft.
@@ -188,8 +198,12 @@ For this Codex path, do not pre-lock `design-locks/`, palette, or per-slide layo
 [7] Render QA
     Contact sheet + layout JSON + at least one fix-and-reverify cycle
         ↓
-PPTX/<task-slug>/final/<deck-title>.pptx   ← primary
-PPTX/<task-slug>/final/<deck-title>.html   ← secondary (HTML deck, when requested)
+PPTX route:
+  PPTX/<task-slug>/final/<deck-title>.pptx   ← editable primary output
+  PPTX/<task-slug>/final/<deck-title>.html   ← view-only share companion
+
+HTML-deck-only route:
+  PPTX/<task-slug>/final/<deck-title>.html   ← full HTML deck output
 ```
 
 Skipping Step 2 produces information dumps, not presentations.
@@ -503,6 +517,7 @@ Full gate definitions inside MD2PPT: `docs/quality-gates.md`. If that file is un
 - [ ] Layout JSON reviewed (overflow, font issues, spacing)
 - [ ] At least one "find issue → fix → re-render" cycle completed
 - [ ] Final output confirmed at `PPTX/<task-slug>/final/<deck-title>.pptx` or `PPTX/<task-slug>/final/<deck-title>.html`
+- [ ] For PPTX output, view-only HTML companion exists at `PPTX/<task-slug>/final/<deck-title>.html`
 - [ ] Completion report includes: output path, render evidence, remaining risks
 
 ---

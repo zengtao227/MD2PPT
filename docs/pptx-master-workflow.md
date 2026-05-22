@@ -47,6 +47,7 @@
 [6] final compare and selection
         ↓
 [最终] PPTX/<task-slug>/final/<主题名>.pptx
+       PPTX/<task-slug>/final/<主题名>.html
 ```
 
 这个流程的关键不是“把 Markdown 套模板”，而是先锁住目标、受众、资料边界和输出约束，再让 Presentations 插件负责叙事组织、视觉系统、可编辑构建和渲染 QA。
@@ -325,6 +326,7 @@ python3 skills/ui-ux-pro-max/scripts/search.py "layout spacing contrast accessib
 
 [目标]
 - 输出可编辑 .pptx 到 PPTX/<task-slug>/final/<deck-title>.pptx
+- 同时输出只读 HTML 分享版到 PPTX/<task-slug>/final/<deck-title>.html
 - scratch / preview / layout / QA 文件放在 Presentations 技能自己的 workspace 中
 - 最终只把可交付 PPTX 放到 PPTX/<task-slug>/final/
 
@@ -405,6 +407,7 @@ skills/pptx/scripts/thumbnail.py 生成缩略图
 使用本仓库 skills/pptx/SKILL.md 的 pptxgenjs 工作流。
 读取 deck.md 和 design-locks/<lock>.md。
 生成 PPTX/<task-slug>/final/<deck-title>.pptx。
+同时生成 PPTX/<task-slug>/final/<deck-title>.html 作为只读分享版。
 生成后运行 skills/pptx/scripts/thumbnail.py 做缩略图检查。
 ```
 
@@ -435,7 +438,7 @@ skills/pptx/scripts/thumbnail.py 生成缩略图
 3. 选一个 design-lock，作为 Open Design 视觉合同
 4. 在 Codex Prompt 中强制使用 Presentations + artifact-tool presentation JSX
 5. 要求 claim spine、design-system、contact-sheet plan、render QA、至少一轮修复
-6. 输出 PPTX/<task-slug>/final/<主题名>.pptx
+6. 输出 PPTX/<task-slug>/final/<主题名>.pptx 和只读分享版 HTML
 ```
 
 这就是当前最顺畅的高质量 PPTX 工作流。

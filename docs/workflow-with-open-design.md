@@ -15,6 +15,7 @@ Codex Presentations
 artifact-tool presentation JSX → render QA → export PPTX
     ↓
 PPTX/<task-slug>/final/<deck-title>.pptx
+PPTX/<task-slug>/final/<deck-title>.html
 ```
 
 ## 三层分工
@@ -102,7 +103,7 @@ python3 skills/ui-ux-pro-max/scripts/search.py "layout spacing contrast accessib
 - 可根据 ui-ux-pro-max 的结论选择图表和 proof object 表达方式
 - 构建可编辑文本、形状、线条、表格和图表
 - 渲染预览图、contact sheet、layout JSON，并完成至少一轮修复验证
-- 最终输出 `PPTX/<task-slug>/final/<deck-title>.pptx`
+- 最终输出 `PPTX/<task-slug>/final/<deck-title>.pptx` 和只读分享版 `PPTX/<task-slug>/final/<deck-title>.html`
 ```
 
 ### 第五步：检查和迭代
@@ -130,7 +131,7 @@ Claude Code
     ↓
 读取 skills/pptx/SKILL.md
     ↓
-用 pptxgenjs 生成 `PPTX/<task-slug>/final/<deck-title>.pptx`
+用 pptxgenjs 生成 `PPTX/<task-slug>/final/<deck-title>.pptx` 和只读分享版 HTML
     ↓
 用 skills/pptx/scripts/thumbnail.py 生成缩略图检查
 ```
@@ -141,6 +142,7 @@ Claude Code
 使用本仓库 skills/pptx/SKILL.md 的 pptxgenjs 工作流。
 读取 deck.md 和 design-locks/<lock>.md。
 生成 `PPTX/<task-slug>/final/<deck-title>.pptx`。
+同时生成 `PPTX/<task-slug>/final/<deck-title>.html` 作为只读分享版。
 生成后运行 skills/pptx/scripts/thumbnail.py 做缩略图检查。
 ```
 

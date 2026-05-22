@@ -4,7 +4,7 @@ Ready-to-use generation prompts for the supported output paths. Fill in `<...>` 
 
 Before using any template, resolve file paths from the active project. Do not include a file in the prompt unless it exists. Outside MD2PPT, omit `docs/pptx-master-workflow.md` and rely on this skill's references instead.
 
-All user-facing artifacts for a deck must be collected under `PPTX/<task-slug>/`: confirmed brief, review pages, versioned PPTX files, contact sheets, QA summaries, revision requests, comparison files, and final deliverables. Codex Presentations may keep its internal scratch workspace under `outputs/<thread-id>/presentations/...`, but copy user-facing outputs back into `PPTX/<task-slug>/`.
+All user-facing artifacts for a deck must be collected under `PPTX/<task-slug>/`: confirmed brief, review pages, versioned PPTX files, per-slide preview images, contact sheets, QA summaries, revision requests, comparison files, and final deliverables. Codex Presentations may keep its internal scratch workspace under `outputs/<thread-id>/presentations/...`, but copy user-facing outputs back into `PPTX/<task-slug>/`.
 
 ---
 
@@ -47,6 +47,12 @@ python3 scripts/presentation_director.py wait --task "<short task slug>" --for r
 python3 scripts/presentation_director.py prompt --task "<short task slug>" --kind revision
 ```
 
+After the final version is selected, make sure a share HTML companion exists:
+
+```bash
+python3 scripts/presentation_director.py share-html --task "<short task slug>" --version "<selected version>"
+```
+
 Skip Template A0 only when the user explicitly says to skip intake/director, when a valid `brief-confirmed.json` already exists, or when the task is a targeted edit / QA pass on an existing deck.
 
 ---
@@ -70,7 +76,9 @@ Do NOT use pptxgenjs, Marp, or Google Slides as the primary generation path.
 
 [Output Target]
 - Final PPTX: `PPTX/<task-slug>/v1/final.pptx` for first draft, then `PPTX/<task-slug>/final/<deck-title>.pptx` after final selection
+- Per-slide preview PNGs: copy to `PPTX/<task-slug>/v1/slides/` for the final share HTML companion
 - Contact sheet and concise QA summary: copy to `PPTX/<task-slug>/v1/`
+- Final share HTML companion: `PPTX/<task-slug>/final/<deck-title>.html`, generated from the selected version's per-slide previews
 - Scratch / preview / layout files required by the Presentations plugin may stay inside its internal workspace
 - User-facing deliverables and review artifacts must be collected in `PPTX/<task-slug>/`
 
@@ -96,11 +104,13 @@ Do NOT use pptxgenjs, Marp, or Google Slides as the primary generation path.
 
 [QA Requirements]
 - Render per-slide preview images
+- Copy final per-slide preview images into `PPTX/<task-slug>/<version>/slides/`
 - Generate a contact sheet (thumbnail grid)
 - Generate layout JSON; review for overflow, font issues, spacing
 - Use the Presentations comeback rubric for self-assessment
 - Complete at least one "find issue → fix → re-render" cycle
 - Final reply must include: PPTX absolute path, QA evidence, remaining risks for human review
+- Final reply must include: PPTX absolute path, HTML companion absolute path, QA evidence, remaining risks for human review
 ```
 
 ---
@@ -118,6 +128,7 @@ Use this repository's skills/pptx/SKILL.md pptxgenjs workflow to generate an edi
 
 [Output Target]
 - Final PPTX: `PPTX/<task-slug>/final/<deck-title>.pptx`
+- Final share HTML companion: `PPTX/<task-slug>/final/<deck-title>.html`
 
 [Narrative Requirements]
 - Before writing any pptxgenjs code, produce a claim spine:
@@ -137,9 +148,10 @@ Use this repository's skills/pptx/SKILL.md pptxgenjs workflow to generate an edi
 
 [QA Requirements]
 - After generating the PPTX, run the local thumbnail script only if it exists: `python3 skills/pptx/scripts/thumbnail.py PPTX/<task-slug>/final/<deck-title>.pptx`
+- Generate or copy per-slide rendered images, then create a view-only HTML companion at `PPTX/<task-slug>/final/<deck-title>.html`
 - Review thumbnails for: text overflow, font substitution, layout collision, color violations
 - Fix at least one identified issue and regenerate before declaring done
-- Final reply must include: PPTX absolute path, thumbnail path, remaining risks for human review
+- Final reply must include: PPTX absolute path, HTML companion path, thumbnail path, remaining risks for human review
 ```
 
 ---
@@ -241,3 +253,5 @@ After generation, verify all of the following:
 | Offline / local | skills/pptx + pptxgenjs | — | Marp |
 | HTML online sharing | installed HTML deck skill | browser print / PDF export | static HTML handoff |
 | Need Google Slides | Generate PPTX first → import via Google Drive | — | — |
+
+PPTX routes still produce a view-only HTML companion for simple sharing. That companion is generated from rendered slide previews and is not the editable source.

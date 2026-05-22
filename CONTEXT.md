@@ -77,18 +77,33 @@ PPTX/<task-slug>/
   final-selection.json
   v1/
     final.pptx
+    slides/
+      slide-001.png
+      slide-002.png
     contact-sheet.png
     qa-summary.md
   v2/
     final.pptx
+    slides/
     contact-sheet.png
     qa-summary.md
   final/
     <deck-title>.pptx
+    <deck-title>.html
     final-report.md
 ```
 
-Codex Presentations 插件内部可能仍按插件规则使用 `outputs/<thread-id>/presentations/...` 作为 scratch workspace；但交给用户看的 brief、版本、contact sheet、QA 摘要和最终 PPTX 必须复制或保存到 `PPTX/<task-slug>/`。
+Codex Presentations 插件内部可能仍按插件规则使用 `outputs/<thread-id>/presentations/...` 作为 scratch workspace；但交给用户看的 brief、版本、逐页预览图、contact sheet、QA 摘要、最终 PPTX 和最终 HTML 分享版必须复制或保存到 `PPTX/<task-slug>/`。
+
+### HTML Companion
+
+最终 `.pptx` 的只读分享版。它由最终版本的逐页渲染图生成，保存为 `PPTX/<task-slug>/final/<deck-title>.html`，方便浏览器打开或简单分享。它不是编辑源，也不是 HTML deck 引擎的替代品；如果 PPTX 内容被修改，应从修改后的 PPTX 或重新渲染的逐页预览图再生成一次 HTML companion。
+
+### PPTX Editability
+
+最终 `.pptx` 是主要可编辑交付物。小改不需要重新生成整套 deck：文字替换、元素左右移动、颜色微调、替换图片、添加少量图片或图表，都应优先作为 PowerPoint 手工编辑或 Codex `Presentations` targeted-edit 处理。为了保留可回退历史，agent 修改现有 PPTX 时应复制成新版本，例如 `PPTX/<task-slug>/v2/final.pptx`，再重新生成 HTML companion。
+
+如果某个元素被做成了截图或整页图片，它只能整体移动/裁剪，不能编辑内部文字、连接线或数据。需要可细编辑时，应要求 agent 把该页重建为原生文本框、形状、连接器、表格或图表。
 
 ### Fallback PPTX Path
 
@@ -110,11 +125,12 @@ style-review / optional revised versions
 final comparison and selection
     ↓
 PPTX/<task-slug>/final/<deck-title>.pptx
+PPTX/<task-slug>/final/<deck-title>.html
 ```
 
 在 Codex 环境中，`deck.md`、`design-locks` 和 `ui-ux-pro-max` 都可以作为可选的中间资料或风格约束，但不再是全新 PPTX 第一版生成前的硬性步骤。第一版应优先让 Presentations plugin 根据 confirmed brief 自主完成内容组织、设计系统、contact sheet rhythm 和渲染 QA。
 
-如果目标是在线分享而非 PowerPoint 编辑，生成层可以改走 HTML 路由：
+如果目标是在线分享而非 PowerPoint 编辑，生成层可以改走完整 HTML deck 路由。注意这不同于每个 PPTX 最终都会附带的只读 HTML companion；HTML deck 路由是把 HTML 作为主输出。
 
 ```text
 deck.md
