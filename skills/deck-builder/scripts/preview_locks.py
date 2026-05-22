@@ -14,7 +14,12 @@ Usage:
     # then open: assets/locks-preview.html
 """
 
+import http.server
 import json as _json
+import socket
+import sys
+import threading
+import webbrowser
 from pathlib import Path
 
 
@@ -579,14 +584,19 @@ function toggleMode() {
 function confirmSelection() {
   const lock = LOCKS.find(l => l.id === activeId);
   const text = `我选择 ${lock.name} / ${lock.zh}`;
-  navigator.clipboard.writeText(text).then(() => {
-    document.getElementById('confirm-btn').textContent = '✓ 已确认';
+  fetch('/confirmed',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id:lock.id,name:lock.name,zh:lock.zh,text:text})
+  }).then(r=>r.ok?r:Promise.reject()).then(()=>{
+    document.getElementById('confirm-btn').textContent='✓ 已发送至 Claude';
     document.getElementById('confirm-btn').classList.add('done');
+    document.getElementById('copied-msg').textContent='✓ 选择已自动发送，Claude 即将继续。';
     document.getElementById('copied-msg').classList.add('show');
-  }).catch(() => {
-    document.getElementById('copied-msg').innerHTML =
-      `请手动复制粘贴到 Claude：<br><strong>${text}</strong>`;
-    document.getElementById('copied-msg').classList.add('show');
+  }).catch(()=>{
+    navigator.clipboard.writeText(text).then(()=>{
+      document.getElementById('confirm-btn').textContent='✓ 已复制（请粘贴到 Claude）';
+      document.getElementById('confirm-btn').classList.add('done');
+      document.getElementById('copied-msg').classList.add('show');
+    });
   });
 }
 
@@ -595,6 +605,48 @@ render();
 </script>
 </body>
 </html>"""
+
+
+_LOCKS_PORT = 7532
+_SEL_FILE = Path("/tmp/deck-locks-selection.json")
+
+
+class _LocksHandler(http.server.BaseHTTPRequestHandler):
+    html: str = ""
+    done: threading.Event = threading.Event()
+    result: dict = {}
+
+    def do_GET(self) -> None:
+        if self.path in ('/', '/index.html'):
+            body = self.html.encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def do_POST(self) -> None:
+        if self.path == '/confirmed':
+            n = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(n)
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b'ok')
+            try:
+                _LocksHandler.result = _json.loads(body)
+            except Exception:
+                pass
+            threading.Thread(target=_LocksHandler.done.set, daemon=True).start()
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def log_message(self, *_args: object) -> None:
+        pass
 
 
 def main() -> None:
@@ -610,23 +662,53 @@ def main() -> None:
             raw = _json.loads(palette_json.read_text(encoding="utf-8"))
             candidates = raw.get("palettes", raw) if isinstance(raw, dict) else raw
             if isinstance(candidates, list) and candidates:
-                palette = candidates[0]   # use first (Claude's top recommendation)
+                palette = candidates[0]
         except Exception:
             pass
 
     locks = _build_locks(palette)
-    html = HTML_TEMPLATE.replace("__LOCKS_JSON__", _json.dumps(locks, ensure_ascii=False))
+    html_content = HTML_TEMPLATE.replace("__LOCKS_JSON__", _json.dumps(locks, ensure_ascii=False))
     palette_js = _json.dumps(palette, ensure_ascii=False) if palette else "null"
-    html = html.replace("__PALETTE_JSON__", palette_js)
+    html_content = html_content.replace("__PALETTE_JSON__", palette_js)
 
+    # Write static fallback file
     out = assets_dir / "locks-preview.html"
-    out.write_text(html, encoding="utf-8")
-    print(f"✓ {out}")
+    out.write_text(html_content, encoding="utf-8")
+
+    # Find an available port starting from _LOCKS_PORT
+    port = _LOCKS_PORT
+    for _ in range(20):
+        with socket.socket() as sock:
+            if sock.connect_ex(('localhost', port)) != 0:
+                break
+            port += 1
+
+    _LocksHandler.html = html_content
+    _LocksHandler.done.clear()
+    _LocksHandler.result = {}
+
+    httpd = http.server.HTTPServer(('localhost', port), _LocksHandler)
+    t = threading.Thread(target=httpd.serve_forever, daemon=True)
+    t.start()
+
+    url = f"http://localhost:{port}"
+    print(f"✓ 结构层预览已启动: {url}")
     if palette:
-        print(f"  配色已加载：{palette.get('name','?')}  — 点「用我的配色预览」查看实际效果")
+        print(f"  配色已加载：{palette.get('name', '?')}  — 点「用我的配色预览」查看实际效果")
     else:
         print("  中性色模式（未找到 palettes.json）")
-    print("  Click a lock on the left, then '确认此结构层 →' to copy selection.")
+    print("  选择结构层后点「确认此结构层」，选择将自动发送给 Claude。")
+    sys.stdout.flush()
+
+    webbrowser.open(url)
+
+    _LocksHandler.done.wait()
+    httpd.shutdown()
+
+    sel = _LocksHandler.result
+    _SEL_FILE.write_text(_json.dumps(sel, ensure_ascii=False, indent=2), encoding='utf-8')
+    print(f"DECK_SELECTION_LOCKS: {_json.dumps(sel, ensure_ascii=False)}")
+    sys.stdout.flush()
 
 
 if __name__ == "__main__":

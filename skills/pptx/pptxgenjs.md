@@ -19,10 +19,19 @@ pres.writeFile({ fileName: "Presentation.pptx" });
 ## Layout Dimensions
 
 Slide dimensions (coordinates in inches):
-- `LAYOUT_16x9`: 10" × 5.625" (default)
+- `LAYOUT_16x9`: 10" × 5.625" **(use this for standard widescreen)**
 - `LAYOUT_16x10`: 10" × 6.25"
 - `LAYOUT_4x3`: 10" × 7.5"
 - `LAYOUT_WIDE`: 13.3" × 7.5"
+
+> **Pitfall:** `LAYOUT_WIDE` is NOT the standard 16:9 widescreen — it is 13.3" × 7.5".
+> If you place elements using 10" × 5.625" coordinates but set `prs.layout = 'LAYOUT_WIDE'`,
+> all content will be cramped into the top-left corner of the larger canvas.
+> Always use `LAYOUT_16x9` for standard presentations and match your coordinate constants:
+> ```javascript
+> const SW = 10, SH = 5.625;  // must match LAYOUT_16x9
+> prs.layout = 'LAYOUT_16x9';
+> ```
 
 ---
 

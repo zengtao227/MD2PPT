@@ -17,8 +17,12 @@ Usage:
     # then open: assets/palette-preview.html
 """
 
+import http.server
 import json
+import socket
 import sys
+import threading
+import webbrowser
 from pathlib import Path
 
 # ── Built-in palette library ────────────────────────────────────────────────
@@ -839,13 +843,19 @@ function confirm_(){
   const all=[...(RECOMMENDED||[]),...LIBRARY];
   const p=all.find(x=>x.id===selectedId);
   const text=`我选择配色方案：${p.name}（${p.zh||p.id}）`;
-  navigator.clipboard.writeText(text).then(()=>{
-    document.getElementById('cbtn').textContent='✓ 已确认';
+  fetch('/confirmed',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id:p.id,name:p.name,zh:p.zh||'',text:text})
+  }).then(r=>r.ok?r:Promise.reject()).then(()=>{
+    document.getElementById('cbtn').textContent='✓ 已发送至 Claude';
     document.getElementById('cbtn').classList.add('done');
+    document.getElementById('cmsg').textContent='✓ 选择已自动发送，Claude 即将继续。';
     document.getElementById('cmsg').classList.add('show');
   }).catch(()=>{
-    document.getElementById('cmsg').innerHTML=`请手动复制：<strong>${text}</strong>`;
-    document.getElementById('cmsg').classList.add('show');
+    navigator.clipboard.writeText(text).then(()=>{
+      document.getElementById('cbtn').textContent='✓ 已复制（请粘贴到 Claude）';
+      document.getElementById('cbtn').classList.add('done');
+      document.getElementById('cmsg').classList.add('show');
+    });
   });
 }
 
@@ -856,6 +866,48 @@ renderLibrary();
 </script>
 </body>
 </html>"""
+
+
+_PALETTE_PORT = 7531
+_SEL_FILE = Path("/tmp/deck-palette-selection.json")
+
+
+class _PaletteHandler(http.server.BaseHTTPRequestHandler):
+    html: str = ""
+    done: threading.Event = threading.Event()
+    result: dict = {}
+
+    def do_GET(self) -> None:
+        if self.path in ('/', '/index.html'):
+            body = self.html.encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def do_POST(self) -> None:
+        if self.path == '/confirmed':
+            n = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(n)
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b'ok')
+            try:
+                _PaletteHandler.result = json.loads(body)
+            except Exception:
+                pass
+            threading.Thread(target=_PaletteHandler.done.set, daemon=True).start()
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def log_message(self, *_args: object) -> None:
+        pass
 
 
 def main() -> None:
@@ -878,16 +930,47 @@ def main() -> None:
         except Exception:
             pass
 
+    html_content = (HTML
+                    .replace("RECOMMENDED_JSON", json.dumps(recommended, ensure_ascii=False))
+                    .replace("LIBRARY_JSON", json.dumps(PALETTE_LIBRARY, ensure_ascii=False))
+                    .replace("DECK_INDUSTRY_JSON", json.dumps(deck_industry, ensure_ascii=False)))
+
+    # Write static fallback file
     out = assets_dir / "palette-preview.html"
-    html = (HTML
-            .replace("RECOMMENDED_JSON", json.dumps(recommended, ensure_ascii=False))
-            .replace("LIBRARY_JSON", json.dumps(PALETTE_LIBRARY, ensure_ascii=False))
-            .replace("DECK_INDUSTRY_JSON", json.dumps(deck_industry, ensure_ascii=False)))
-    out.write_text(html, encoding="utf-8")
-    print(f"✓ {out}")
+    out.write_text(html_content, encoding="utf-8")
+
+    # Find an available port starting from _PALETTE_PORT
+    port = _PALETTE_PORT
+    for _ in range(20):
+        with socket.socket() as sock:
+            if sock.connect_ex(('localhost', port)) != 0:
+                break
+            port += 1
+
+    _PaletteHandler.html = html_content
+    _PaletteHandler.done.clear()
+    _PaletteHandler.result = {}
+
+    httpd = http.server.HTTPServer(('localhost', port), _PaletteHandler)
+    t = threading.Thread(target=httpd.serve_forever, daemon=True)
+    t.start()
+
+    url = f"http://localhost:{port}"
+    print(f"✓ 配色预览已启动: {url}")
     print(f"  推荐方案: {len(recommended)} 套  |  配色库: {len(PALETTE_LIBRARY)} 套"
           + (f"  |  行业: {deck_industry}" if deck_industry else ""))
-    print("  在浏览器中打开，选择配色后点「确认此配色方案」，选择自动复制到剪贴板。")
+    print("  选择配色后点「确认此配色方案」，选择将自动发送给 Claude。")
+    sys.stdout.flush()
+
+    webbrowser.open(url)
+
+    _PaletteHandler.done.wait()
+    httpd.shutdown()
+
+    sel = _PaletteHandler.result
+    _SEL_FILE.write_text(json.dumps(sel, ensure_ascii=False, indent=2), encoding='utf-8')
+    print(f"DECK_SELECTION_PALETTE: {json.dumps(sel, ensure_ascii=False)}")
+    sys.stdout.flush()
 
 
 if __name__ == "__main__":

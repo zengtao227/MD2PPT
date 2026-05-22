@@ -1,6 +1,6 @@
 node_modules/
 outputs/
-PPTX/
+/PPTX/
 assets/
 .DS_Store
 *.log
