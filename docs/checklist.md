@@ -45,6 +45,6 @@ npm run export:all
 
 不建议提交：
 
-- `outputs/`
+- `PPTX/`
 - 临时截图
 - 本地缓存

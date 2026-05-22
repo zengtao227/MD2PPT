@@ -1,7 +1,7 @@
 # AI 背景图生成（可选步骤）
 
 > 在工作流的「选定设计档案」之后、「生成 PPTX」之前，可选择性地为封面和章节分隔页生成 AI 背景图。
-> 如果现有 design-profile 的纯色/色块方案已经足够，跳过本步骤即可。
+> 如果现有 design-lock 的纯色/色块方案已经足够，跳过本步骤即可。
 
 ---
 
@@ -9,7 +9,7 @@
 
 | 情况 | 建议 |
 |------|------|
-| design-profile 纯色方案已经足够 | **跳过**，直接生成 PPTX |
+| design-lock 纯色方案已经足够 | **跳过**，直接生成 PPTX |
 | 想要更强的视觉冲击力（路演封面、大赛答辩）| **使用**，生成封面背景图 |
 | 需要独一无二的品牌感 | **使用**，生成与内容主题相关的抽象背景 |
 
@@ -40,7 +40,7 @@
 
 抽象图像的优势：
 - 不和文字抢视觉
-- 与 design-profile 颜色系统保持一致
+- 与 design-lock 颜色系统保持一致
 - 加半透明遮罩后文字对比度有保障
 - 每次都能生成独一无二的版本
 
@@ -48,11 +48,11 @@
 
 ## Prompt 构造规则
 
-根据 design-profile 自动构造图片 Prompt：
+根据 design-lock 自动构造图片 Prompt：
 
 ```text
 Abstract [主色调描述] textured background,
-[design-profile 风格关键词],
+[design-lock 风格关键词],
 minimal, no text, no people, no faces,
 suitable for presentation slide cover,
 high resolution, 1920x1080
@@ -75,7 +75,7 @@ minimal circuit-like geometry, no text, no people,
 1920x1080 presentation cover background
 ```
 
-**guizang-monocle（暖纸叙事）**
+**editorial（暖纸叙事）**
 ```
 Warm paper texture with subtle ink wash elements,
 editorial minimal, off-white (#f1efea) and ink tones,
@@ -83,7 +83,7 @@ no text, no people, soft grain texture,
 1920x1080 presentation cover background
 ```
 
-**guizang-indigo（靛蓝学术）**
+**academic（靛蓝学术）**
 ```
 Abstract indigo porcelain texture, cool tech aesthetic,
 deep blue (#0a1f3d) with subtle cerulean highlights,
@@ -120,18 +120,18 @@ no text, no people, clean and airy,
     用 ui-ux-pro-max 查行业、风格、字体、配色
         ↓
 [5] 视觉合同
-    选 design-locks/<profile>.md
+    选 design-locks/<lock>.md
         ↓
 [5.5] 可选：生成 AI 背景图
     ┌─ 判断：现有纯色方案是否已足够？
     │    是 → 跳过，直接到步骤 6
     │    否 → 执行以下步骤：
-    │         • 构造图片 Prompt（基于 design-profile 颜色 + 风格）
+    │         • 构造图片 Prompt（基于 design-lock 颜色 + 风格）
     │         • 调用 DALL-E 3 / Flux API
     │         • 下载 PNG 到 assets/cover-bg.png
     │         • 在 Codex Prompt 中注明：
     │           封面和章节页使用 assets/cover-bg.png 作为背景
-    │           叠加 40-60% 不透明度的遮罩（design-profile 主色）
+    │           叠加 40-60% 不透明度的遮罩（design-lock 主色）
     └─────────────────────────────────────────
         ↓
 [6] Codex Presentations 生成 PPTX
@@ -146,12 +146,12 @@ no text, no people, clean and airy,
 
 封面页和章节切换页：
 - 使用 assets/cover-bg.png 作为满铺背景图
-- 叠加 50% 不透明度的遮罩，颜色使用 design-profile 的主背景色
-- 文字颜色用 design-profile 的反色（浅底用深字，深底用白字）
+- 叠加 50% 不透明度的遮罩，颜色使用 design-lock 的主背景色
+- 文字颜色用 design-lock 的反色（浅底用深字，深底用白字）
 
 内容页：
 - 不使用背景图
-- 按 design-profile 的纯色填充方案
+- 按 design-lock 的纯色填充方案
 ```
 
 ---

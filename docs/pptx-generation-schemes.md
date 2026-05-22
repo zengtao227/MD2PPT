@@ -18,7 +18,7 @@
 
 - 它不是简单“Markdown 转 PPTX”，而是完整 deck 工作流：claim spine、design system、contact-sheet plan、render QA、rubric 评分、迭代修复。
 - 输出是可编辑 PowerPoint。
-- 能把 `ui-ux-pro-max` 的设计情报和 `design-profiles/` 的 Open Design 视觉合同结合起来。
+- 能把 `ui-ux-pro-max` 的设计情报和 `design-locks/` 的 Open Design 视觉合同结合起来。
 - 比单纯 pptxgenjs 脚本更适合生成有专业叙事和视觉节奏的 deck。
 
 本仓库 `skills/pptx` + pptxgenjs 保留为 Claude Code / 离线备用路径。Marp 保留为快速写作、预览和提交 PDF 的路径。
@@ -44,7 +44,7 @@
 **工作流：**
 
 ```text
-deck.md + design-profile
+deck.md + design-lock
         ↓
 Codex Presentations
 claim spine → design system → contact-sheet plan
@@ -55,13 +55,13 @@ artifact-tool presentation JSX 构建可编辑 slides
         ↓
 修复弱页并重新验证
         ↓
-outputs/<deck-title>.pptx
+PPTX/<task-slug>/final/<deck-title>.pptx
 ```
 
 **优点：**
 
 - 把内容叙事、设计系统和视觉 QA 放在同一条工作流里。
-- 可显式要求使用 `ui-ux-pro-max` 设计情报和 Open Design `design-profiles/`。
+- 可显式要求使用 `ui-ux-pro-max` 设计情报和 Open Design `design-locks/`。
 - 适合商业计划、投资人 deck、技术方案、数据报告等需要专业成品感的任务。
 - PowerPoint 输出可编辑。
 
@@ -172,7 +172,7 @@ thumbnail.py 生成缩略图
 **缺点：**
 
 - PPTX 导出通常需要付费。
-- 工作流和本仓库的 `deck.md` / design-profile / Codex QA 体系不完全一致。
+- 工作流和本仓库的 `deck.md` / design-lock / Codex QA 体系不完全一致。
 
 **适合场景：** 愿意付费并接受在线平台工作流时使用。
 
@@ -186,7 +186,7 @@ thumbnail.py 生成缩略图
 用 ui-ux-pro-max --design-system 生成设计情报简报
 按需补查 style / typography / google-fonts / color / chart / ux
         ↓
-选择 design-profiles/<profile>.md
+选择 design-locks/<lock>.md
         ↓
 Codex Prompt 明确：
 使用 Presentations + artifact-tool presentation JSX
@@ -196,7 +196,7 @@ Codex Prompt 明确：
         ↓
 构建、渲染、修复、再验证
         ↓
-输出 outputs/<deck-title>.pptx
+输出 `PPTX/<task-slug>/final/<deck-title>.pptx`
 ```
 
 详见：`docs/pptx-master-workflow.md`。
@@ -207,4 +207,4 @@ Codex Prompt 明确：
 
 - 如果经常要把 PPTX 转成 Google Slides：增加 Google Drive 导入步骤说明。
 - 如果要让 Claude Code 也稳定出高质量 deck：把 Presentations 的 claim spine / design-system / contact-sheet QA 思路迁移到 `skills/pptx` Prompt 模板。
-- 如果需要公司统一品牌模板：新增 `design-profiles/<brand>.md`，而不是每次在 Prompt 里临时描述品牌色。
+- 如果需要公司统一品牌模板：新增 `design-locks/<brand>.md`，而不是每次在 Prompt 里临时描述品牌色。

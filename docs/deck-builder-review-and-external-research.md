@@ -15,7 +15,7 @@ Verified:
 - Frontmatter and backtick reference syntax are valid.
 - The skill correctly separates responsibilities:
   - `ui-ux-pro-max` is design intelligence.
-  - `design-profiles/` are visual contracts.
+  - `design-locks/` are visual contracts.
   - Codex `Presentations` is the primary editable PPTX generation path.
   - `pptxgenjs` is the fallback path for Claude Code or offline use.
 
@@ -26,7 +26,7 @@ Verified:
 The skill is intended to work outside MD2PPT, but several references still assume local repo paths such as:
 
 - `skills/ui-ux-pro-max`
-- `design-profiles/`
+- `design-locks/`
 - `docs/pptx-master-workflow.md`
 - `skills/pptx/SKILL.md`
 - `skills/pptx/scripts/thumbnail.py`
@@ -243,7 +243,7 @@ Its strongest contribution is not breadth. It is discipline: locked layout IDs, 
 
    The Swiss mode does not say "make it Swiss-ish." It requires a registered `data-layout="Sxx"` from a fixed layout set. This is exactly what many AI-generated slide workflows lack: a hard grammar.
 
-   Our `design-profiles/` should evolve from loose style descriptions into executable contracts:
+   Our `design-locks/` should evolve from loose style descriptions into executable contracts:
 
    - allowed layout families
    - required page chrome
@@ -282,7 +282,7 @@ Its strongest contribution is not breadth. It is discipline: locked layout IDs, 
 
 #### Recommended role in our system
 
-Use it as a **design-profile discipline reference** and an optional HTML/social-cover path.
+Use it as a **design-lock discipline reference** and an optional HTML/social-cover path.
 
 ### 4.4 `lewislulu/html-ppt-skill`
 
@@ -303,7 +303,7 @@ Use it as a **design-profile discipline reference** and an optional HTML/social-
 
 1. **Tokenized theme/layout catalog**
 
-   It separates base tokens, themes, layouts, runtime, and full-deck templates. This is a good model for organizing our design profiles and prompt templates.
+   It separates base tokens, themes, layouts, runtime, and full-deck templates. This is a good model for organizing our design locks and prompt templates.
 
 2. **Presenter script support**
 
@@ -348,7 +348,7 @@ This is a template library rather than a deck generation engine. It has:
 
 1. **Template registry schema**
 
-   Its `index.json` fields are exactly the kind of metadata our `design-profiles/` currently lack:
+   Its `index.json` fields are exactly the kind of metadata our `design-locks/` currently lack:
 
    - `mood`
    - `occasion`
@@ -372,7 +372,7 @@ This is a template library rather than a deck generation engine. It has:
 
 4. **Preserve then extend**
 
-   When a template lacks a needed slide, the agent must extend the same visual system rather than mixing in a different template. This rule should become part of our design profile contract.
+   When a template lacks a needed slide, the agent must extend the same visual system rather than mixing in a different template. This rule should become part of our design lock contract.
 
 #### What not to copy blindly
 
@@ -382,7 +382,7 @@ This is a template library rather than a deck generation engine. It has:
 
 #### Recommended role in our system
 
-Use it as the model for a **design-profile registry** and **visual preview selection layer**.
+Use it as the model for a **design-lock registry** and **visual preview selection layer**.
 
 ## 5. Synthesis: What This Means for MD2PPT
 
@@ -392,7 +392,7 @@ The external projects cluster into three categories:
 | --- | --- | --- |
 | Native editable PPTX reference | `ppt-master` | High as design reference and future candidate; not an active route yet |
 | HTML deck skills | `frontend-slides`, `guizang-ppt-skill`, `html-ppt-skill` | Medium. Strong design workflow and QA ideas, but not final editable PPTX |
-| Visual template registry | `beautiful-html-templates` | High. Strong model for design profile indexing, preview selection, and contract depth |
+| Visual template registry | `beautiful-html-templates` | High. Strong model for design lock indexing, preview selection, and contract depth |
 
 The biggest lesson: our workflow should not be a single linear "Markdown -> PPTX" script. It should be a router with a shared planning/design layer and multiple output engines.
 
@@ -414,8 +414,7 @@ Output engines:
 ```text
 Codex Presentations      -> primary editable PPTX
 pptxgenjs               -> simple deterministic fallback
-guizang-ppt-skill       -> primary HTML deck path for online sharing
-html-ppt-skill          -> alternative HTML deck path for richer layouts / presenter mode
+installed HTML deck skill -> online sharing path when HTML is requested
 Marp                    -> quick draft / PDF path
 ```
 
@@ -463,13 +462,13 @@ The planner should operate on `source.md`, not on raw fragmented inputs.
 Current:
 
 ```text
-design-profiles/<profile>.md
+design-locks/<lock>.md
 ```
 
 Recommended:
 
 ```text
-design-profiles/<profile>.md
+design-locks/<lock>.md
 deck-work/<slug>/visual-contract.md
 deck-work/<slug>/spec-lock.yaml
 ```
@@ -513,7 +512,7 @@ qa:
 When design quality matters and the user has not specified a visual profile:
 
 1. Query `ui-ux-pro-max`.
-2. Match 3 candidate design profiles using metadata.
+2. Match 3 candidate design locks using metadata.
 3. Generate 3 lightweight previews:
    - title slide
    - one content slide
@@ -558,7 +557,7 @@ The global skill should default to L2 for professional PPTX.
 6. Add Output Router with PPTX primary, HTML secondary, and Marp quick-draft routes.
 7. Add Template C for HTML deck generation.
 8. Add `references/layout-vocabulary.md` with canonical layout names and partial engine mappings.
-9. Add YAML frontmatter metadata to the five design profiles.
+9. Add YAML frontmatter metadata to the five design locks.
 
 ### Still future work
 
@@ -637,12 +636,11 @@ Recommended architecture:
 ```text
 deck-builder = global orchestrator
 ui-ux-pro-max = design intelligence
-design-profiles + spec-lock = visual contract
+design-locks + spec-lock = visual contract
 Codex Presentations = primary editable PPTX engine
 pptxgenjs = fallback editable PPTX path when available
-guizang-ppt-skill = primary HTML deck path
-html-ppt-skill = alternative HTML deck path
+html-ppt-skill / guizang-ppt-skill = optional HTML deck engines, only when installed
 ppt-master = design reference candidate / future PoC
 ```
 
-The strongest immediate improvement is to make our design profiles behave more like `beautiful-html-templates` metadata plus `ppt-master` `spec_lock.md`. That gives us better style matching, less drift, and a cleaner bridge to Codex `Presentations`, pptxgenjs, or HTML deck engines.
+The strongest immediate improvement is to make our design locks behave more like `beautiful-html-templates` metadata plus `ppt-master` `spec_lock.md`. That gives us better style matching, less drift, and a cleaner bridge to Codex `Presentations`, pptxgenjs, or HTML deck engines.

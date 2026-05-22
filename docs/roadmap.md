@@ -52,7 +52,7 @@ Step 2（你确认后执行）：
 
 ```bash
 # 将 PPTX 每页转为 PNG，再纵向拼接
-python3 scripts/export-longimage.py outputs/deck.pptx outputs/deck-longimage.png
+python3 scripts/export-longimage.py PPTX/<task-slug>/final/deck.pptx PPTX/<task-slug>/final/deck-longimage.png
 ```
 
 依赖：LibreOffice（PPTX → PDF）、Poppler（PDF → PNG）、Pillow（拼接）。
@@ -65,7 +65,7 @@ python3 scripts/export-longimage.py outputs/deck.pptx outputs/deck-longimage.png
 
 ### 2.1 AI 背景图生成（可选步骤）
 
-**场景：** 当现有 design-profile 的纯色方案不够视觉冲击力时，可以为封面和章节分隔页生成独一无二的 AI 背景图。
+**场景：** 当现有 design-lock 的纯色方案不够视觉冲击力时，可以为封面和章节分隔页生成独一无二的 AI 背景图。
 
 **详见：** `docs/ai-background-image.md`
 
@@ -83,9 +83,9 @@ python3 scripts/export-longimage.py outputs/deck.pptx outputs/deck-longimage.png
 
 ### 2.3 品牌模板档案
 
-**场景：** 有固定的企业/个人品牌色，每次不需要选 design-profile，直接用品牌模板。
+**场景：** 有固定的企业/个人品牌色，每次不需要选 design-lock，直接用品牌模板。
 
-**实现：** 新建 `design-locks/<brand-name>.md`，把品牌色写死，视为专属 profile 使用。
+**实现：** 新建 `design-locks/<brand-name>.md`，把品牌色写死，视为专属 lock 使用。
 
 ---
 

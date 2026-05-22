@@ -31,7 +31,7 @@ Use these names in `slide-plan.md` under `layout-family`.
 ## Engine Coverage Notes
 
 **guizang-ppt-skill (S01–S22)**
-- Full Swiss International layout library (22 layouts); confirmed design-system match with MD2PPT's 5 design profiles
+- Full Swiss International layout library (22 layouts); confirmed design-system match with MD2PPT's 5 design locks
 - Mapping above uses the registered Swiss layout names where they are semantically close. Some concepts, such as dense tables, are represented by the nearest structured brief/spec layout rather than a literal table slide.
 - Layout names in guizang follow the `S##` slot convention
 

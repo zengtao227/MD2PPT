@@ -24,7 +24,7 @@ The issue is not lack of capability. The root problem is that these capabilities
 
 - `deck.md` is treated as both a human review artifact and a machine source file.
 - PPTX and HTML output paths share intent, but not a clearly defined internal intermediate model.
-- Design profiles still feel like imported style contracts rather than MD2PPT-native design languages.
+- Design locks still feel like imported style contracts rather than MD2PPT-native design languages.
 - Quality checks are mentioned in several places, but not unified as one MD2PPT quality model.
 - External projects are visible too high in the user-facing workflow.
 
@@ -38,7 +38,7 @@ Existing pieces should be reused, not discarded:
 |--------------------|-------|--------|
 | `deck-builder` skill | Yes | It already encodes the end-to-end orchestration model. |
 | `ui-ux-pro-max` | Yes | It provides strong design intelligence and can remain an internal advisor. |
-| `design-profiles/` | Partially | The content is useful, but should be reframed as MD2PPT-native design languages. |
+| `design-locks/` | Partially | The content is useful, but should be reframed as MD2PPT-native design languages. |
 | `deck.md` | Downgrade | Useful for Git/export/debug, but not ideal as the primary human approval surface. |
 | Codex Presentations | Yes | Best current primary renderer for editable PPTX. |
 | HTML skills/projects | Yes, as adapters | Useful output engines, but should not define MD2PPT's product identity. |
@@ -59,7 +59,7 @@ Soft constraints:
 
 - `deck.md` can remain as a sidecar export for Git diff and agent compatibility.
 - `DeckSpec` can start as JSON embedded in `deck-review.html`, then later become a standalone schema.
-- Design languages can be introduced gradually without immediately deleting existing `design-profiles/`.
+- Design languages can be introduced gradually without immediately deleting existing `design-locks/`.
 - Renderer adapters can remain prompt-based before becoming fully automated scripts.
 
 ### 4.方案评估
@@ -103,7 +103,7 @@ The smallest useful refactor is not code. It is a terminology and artifact refac
 1. Define `deck-review.html` as the human approval artifact.
 2. Define embedded `DeckDraft` JSON inside `deck-review.html` as the machine-readable approval data.
 3. Define `DeckSpec` as the compiled, approved intermediate format.
-4. Reframe existing design profiles as future MD2PPT design languages.
+4. Reframe existing design locks as future MD2PPT design languages.
 5. Move external project names out of the normal user-facing workflow and into adapter/reference docs.
 
 Code should come after the model is accepted.
@@ -116,7 +116,7 @@ Affected modules and documents:
 - `docs/pptx-master-workflow.md`
 - `skills/deck-builder/SKILL.md`
 - `skills/deck-builder/references/*`
-- `design-profiles/`
+- `design-locks/`
 - future `design-languages/`
 - future schema files for `DeckDraft` / `DeckSpec`
 - prompt templates for Codex Presentations and HTML renderers
@@ -130,7 +130,7 @@ Risk:
 Mitigation:
 
 - Keep `deck.md` as optional sidecar export during transition.
-- Use explicit naming: `deck-review.html` is for approval; `outputs/*.html` is final presentation output.
+- Use explicit naming: `deck-review.html` is for approval; `PPTX/<task-slug>/final/*.html` is final presentation output.
 - Start with docs and examples before writing a compiler.
 
 ## Target Product Positioning
@@ -255,7 +255,7 @@ It adds renderer-facing precision:
 
 ### 4. MD2PPT Design Languages
 
-Current `design-profiles/` should evolve into MD2PPT-owned design languages.
+Current `design-locks/` should evolve into MD2PPT-owned design languages.
 
 Goal:
 
@@ -321,7 +321,7 @@ Recommended gates:
 
 #### Output Gate
 
-- Final output exists in `outputs/`.
+- Final output exists in `PPTX/<task-slug>/final/`.
 - PPTX is editable where expected.
 - HTML output is browser-tested when selected.
 - Sidecar artifacts are saved for traceability.
@@ -356,13 +356,13 @@ The future user-facing workflow should be:
    content gate, design gate, render gate, output gate
 
 9. Final files are delivered
-   outputs/<deck-title>.pptx or outputs/<deck-title>.html
+   PPTX/<task-slug>/final/<deck-title>.pptx or PPTX/<task-slug>/final/<deck-title>.html
 ```
 
 Important distinction:
 
 - `deck-review.html` = review and approval artifact.
-- `outputs/*.html` = final HTML presentation.
+- `PPTX/<task-slug>/final/*.html` = final HTML presentation.
 - `deck.md` = optional sidecar export, not a required user-facing step.
 - `DeckSpec` = machine intermediate format, not a user editing surface.
 
@@ -436,7 +436,7 @@ Done when:
 
 ### Phase 4: Design Language Refactor
 
-Goal: transform design profiles into MD2PPT-native product assets.
+Goal: transform design locks into MD2PPT-native product assets.
 
 Work:
 
@@ -455,13 +455,13 @@ Work:
   - forbidden patterns
   - PPTX notes
   - HTML notes
-- Keep old `design-profiles/` during migration.
+- Keep old `design-locks/` during migration.
 - Add provenance notes where material is directly adapted from external sources.
 
 Done when:
 
 - New docs can choose MD2PPT design languages without exposing external project names.
-- Existing design profiles still work as fallback.
+- Existing design locks still work as fallback.
 
 ### Phase 5: Renderer Adapter Prompts
 
@@ -554,7 +554,7 @@ Done when:
 1. Is `deck-review.html` as the human approval artifact a better primary surface than `deck.md`?
 2. Is embedded `DeckDraft` JSON inside review HTML robust enough, or should the JSON always be a sidecar file?
 3. Is the distinction between `DeckDraft` and `DeckSpec` necessary, or can they be merged in the first version?
-4. Are `Design Languages` the right abstraction over current `design-profiles/`?
+4. Are `Design Languages` the right abstraction over current `design-locks/`?
 5. Should `deck.md` remain optional forever, or only during migration?
 6. Are the proposed quality gates sufficient for both PPTX and HTML outputs?
 7. Which phase should be implemented first if only one sprint is available?

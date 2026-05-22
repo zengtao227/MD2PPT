@@ -1,6 +1,6 @@
 # Design Workflow: Intelligence → Visual Contract
 
-This reference covers Steps 4 and 5 of the pipeline: running `ui-ux-pro-max` to generate design intelligence, then selecting and applying a design profile from `design-locks/`.
+This reference covers Steps 4 and 5 of the pipeline: running `ui-ux-pro-max` to generate design intelligence, then selecting and applying a design lock from `design-locks/`.
 
 ---
 
@@ -105,46 +105,46 @@ Distill the query output into this 5-field brief (append to deck.md or keep in w
 
 ## Step 5 — Selecting the Visual Contract
 
-### Available Design Profiles
+### Available Design Locks
 
-| Profile File | Style | Best For |
+| Lock File | Style | Best For |
 |-------------|-------|----------|
 | `swiss-klein-blue.md` | Swiss International, Klein Blue accent | Business plan, product roadmap, competition defense, execution report |
 | `linear-dark.md` | Dark background, engineering precision | SaaS product, technical platform, investor deck |
-| `guizang-indigo.md` | Indigo, cold tech / research feel | Technical proposal, data report, AI project introduction |
-| `guizang-monocle.md` | Warm paper, editorial narrative | Business pitch, course presentation, opinion-driven deck |
+| `academic.md` | Indigo, cold tech / research feel | Technical proposal, data report, AI project introduction |
+| `editorial.md` | Warm paper, editorial narrative | Business pitch, course presentation, opinion-driven deck |
 | `notion-warm.md` | Warm white, approachable minimal | Internal report, culture deck, lightweight presentation |
 
 ### Selection Rules
 
-| Situation | Profile |
+| Situation | Lock |
 |-----------|---------|
 | Investor / business decision-maker audience | `swiss-klein-blue` or `linear-dark` |
-| Technical, AI, data, or competition | `guizang-indigo` or `swiss-klein-blue` |
-| Course, internal, culture, or explanatory | `guizang-monocle` or `notion-warm` |
-| Client has a brand color | Pick the closest profile, use brand color as limited accent — do not rewrite the full visual system |
+| Technical, AI, data, or competition | `academic` or `swiss-klein-blue` |
+| Course, internal, culture, or explanatory | `editorial` or `notion-warm` |
+| Client has a brand color | Pick the closest lock, use brand color as limited accent — do not rewrite the full visual system |
 
 ### Design Contract Block
 
-After selecting a profile, append this block to deck.md:
+After selecting a lock, append this block to deck.md:
 
 ```markdown
 ## Design Contract
-- Profile: design-locks/<profile-name>.md
-- Must keep: profile hex values, typography hierarchy, straight-edge grid grammar
+- Lock: design-locks/<lock-name>.md
+- Must keep: lock hex values, typography hierarchy, straight-edge grid grammar
 - May adapt: layout families to match content proof objects
 - Must avoid: gradients, generic card grids, invented logos, unsupported metrics
 ```
 
-### Handling Mismatch Between Intelligence and Profile
+### Handling Mismatch Between Intelligence and Lock
 
-If `ui-ux-pro-max` suggests a direction that conflicts with the selected profile:
+If `ui-ux-pro-max` suggests a direction that conflicts with the selected lock:
 
-1. Keep the profile as the hard constraint — it is the visual contract
+1. Keep the lock as the hard constraint — it is the visual contract
 2. Use the intelligence output to inform proof object choices (chart type, data density, visual hierarchy)
 3. Translate dynamic Web suggestions (motion, scroll) into structural deck choices (pacing, section dividers, varied layouts)
 
-Do not override a profile's hex values or typography hierarchy based on intelligence output alone.
+Do not override a lock's hex values or typography hierarchy based on intelligence output alone.
 
 ---
 
@@ -154,7 +154,7 @@ Do not override a profile's hex values or typography hierarchy based on intellig
 |-------------|------|
 | 3+ consecutive slides with the same layout | Enforce layout variety: mix hero-number, two-column, diagram, table |
 | Generic SaaS card grid (3 items in boxes) | Replace with claim-focused layout tied to the specific proof object |
-| Gradients or shadows not in the profile | Refuse — return to flat, profile-defined color system |
-| New colors introduced mid-deck | Flag as profile violation — lock to existing palette roles |
+| Gradients or shadows not in the lock | Refuse — return to flat, lock-defined color system |
+| New colors introduced mid-deck | Flag as design lock violation — lock to existing palette roles |
 | Low-contrast text on background | Enforce WCAG AA minimum (4.5:1 for body text) |
 | Title that is a noun phrase | Replace with a conclusion sentence |

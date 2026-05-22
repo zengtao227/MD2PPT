@@ -1,5 +1,5 @@
 ---
-profile: guizang-indigo
+profile: academic
 suitable_for:
   - Technical proposal or specification
   - Data report or analytics deck

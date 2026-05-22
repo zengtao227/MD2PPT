@@ -1,5 +1,5 @@
 ---
-profile: guizang-monocle
+profile: editorial
 suitable_for:
   - Business pitch or roadshow
   - Course presentation or academic defense
@@ -11,7 +11,7 @@ formality: medium
 density: medium
 color_scheme: Near-black ink (0a0a0b) on warm paper (f1efea) — editorial warmth, strong text-on-paper contrast
 avoid_for:
-  - Pure engineering or data-heavy decks (use guizang-indigo instead)
+  - Pure engineering or data-heavy decks (use academic instead)
   - Dark-mode preference audiences
   - Decks requiring a strong brand accent color
 ---

@@ -27,10 +27,12 @@ npm run export:all
 等价于：
 
 ```bash
-npx marp deck.md --html --allow-local-files -o outputs/deck.html
-npx marp deck.md --pdf --allow-local-files -o outputs/deck.pdf
-npx marp deck.md --pptx --allow-local-files -o outputs/deck.pptx
+npx marp deck.md --html --allow-local-files -o PPTX/<task-slug>/marp/deck.html
+npx marp deck.md --pdf --allow-local-files -o PPTX/<task-slug>/marp/deck.pdf
+npx marp deck.md --pptx --allow-local-files -o PPTX/<task-slug>/marp/deck.pptx
 ```
+
+真实项目中交付 deck 时，所有 Marp 导出文件也放进该项目的 `PPTX/<task-slug>/marp/`，不要把导出文件散落在项目根目录。
 
 ## 4. 检查导出结果
 
@@ -44,7 +46,7 @@ npx marp deck.md --pptx --allow-local-files -o outputs/deck.pptx
 macOS 上可以用：
 
 ```bash
-pdfinfo outputs/deck.pdf | grep Pages
+pdfinfo PPTX/<task-slug>/marp/deck.pdf | grep Pages
 ```
 
 ## 5. 常见问题
@@ -60,4 +62,3 @@ pdfinfo outputs/deck.pdf | grep Pages
 ### PDF 比 PPTX 更稳定
 
 一般是的。最终提交如果允许 PDF，PDF 通常最接近预览效果。PPTX 可作为比赛要求的补充格式。
-
