@@ -22,7 +22,7 @@ python3 scripts/presentation_director.py init \
   --source "<resolved source path or URL>"
 
 # 2. Start click-based UI and open the intake page automatically
-python3 scripts/presentation_director.py serve --task "<short task slug>" --open-page intake
+python3 scripts/presentation_director.py serve --task "<short task slug>"
 
 # 3. Wait for user to confirm the summarized brief
 python3 scripts/presentation_director.py wait --task "<short task slug>" --for confirmed
@@ -36,6 +36,8 @@ Do not ask the user to copy/paste a local URL. If the page did not open, run:
 ```bash
 python3 scripts/presentation_director.py open-page --task "<short task slug>" --page intake
 ```
+
+For batch or background runs, add `--no-open` and log the printed URL.
 
 After v1 is generated, use the same director workspace for visual revision:
 

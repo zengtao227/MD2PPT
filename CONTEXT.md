@@ -52,7 +52,7 @@ Codex 中生成专业可编辑 PPTX 的主路径。它应使用 artifact-tool `p
 
 Codex 环境下创建全新 PPTX 前的交互增强层。它不生成 PPTX，而是先用点击式 intake 收集听众、目标、资料边界、logo/品牌素材、AI 生图许可和输出限制，再通过 brief confirmation gate 让用户确认，之后才把确认后的 brief 交给 Codex Presentations。
 
-Director 交互页应自动打开，不要让用户复制本地 URL。第一次启动应打开 `intake`；用户点“下一步”后进入确认页。`style-review` 和 `compare` 可用 `presentation_director.py open-page` 或 `render --open-page ...` 打开。
+Director 交互页应自动打开，不要让用户复制本地 URL。`serve` 默认打开 `intake`；用户点“下一步”后进入确认页。批处理或后台运行可显式传 `--no-open`。`style-review` 和 `compare` 可用 `presentation_director.py open-page` 或 `render --open-page ...` 打开。
 
 对于 Codex 里的 net-new PPTX 请求，默认路径必须先走 Presentation Director，不应直接调用 Presentations 生成。只有以下情况可以跳过：
 

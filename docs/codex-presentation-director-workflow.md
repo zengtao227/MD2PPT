@@ -814,7 +814,7 @@ Possible commands:
 
 ```bash
 python3 scripts/presentation_director.py init --task "<task-slug>" --source "<path-or-url>"
-python3 scripts/presentation_director.py serve --task "<task-slug>" --open-page intake
+python3 scripts/presentation_director.py serve --task "<task-slug>"
 python3 scripts/presentation_director.py open-page --task "<task-slug>" --page confirm
 python3 scripts/presentation_director.py render --task "<task-slug>" --open-page style-review
 python3 scripts/presentation_director.py render --task "<task-slug>" --open-page compare

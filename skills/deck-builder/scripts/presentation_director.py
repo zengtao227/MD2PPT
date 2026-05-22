@@ -973,7 +973,7 @@ def command_serve(args: argparse.Namespace) -> None:
     print(f"Confirm:      http://{args.host}:{args.port}/confirm")
     print(f"Style review: http://{args.host}:{args.port}/style-review")
     print(f"Compare:      http://{args.host}:{args.port}/compare")
-    if args.open_page:
+    if not args.no_open and args.open_page:
         open_director_page(args.host, args.port, args.open_page)
     try:
         server.serve_forever()
@@ -1040,7 +1040,13 @@ def build_parser() -> argparse.ArgumentParser:
     serve_parser.add_argument("--task", required=True, help="Task slug or title.")
     serve_parser.add_argument("--host", default=DEFAULT_HOST, help=f"Host. Default: {DEFAULT_HOST}")
     serve_parser.add_argument("--port", default=DEFAULT_PORT, type=int, help=f"Port. Default: {DEFAULT_PORT}")
-    serve_parser.add_argument("--open-page", choices=sorted(PAGE_PATHS.keys()), help="Open a Director page in the default browser once the server starts.")
+    serve_parser.add_argument(
+        "--open-page",
+        choices=sorted(PAGE_PATHS.keys()),
+        default="intake",
+        help="Open a Director page in the default browser once the server starts. Default: intake.",
+    )
+    serve_parser.add_argument("--no-open", action="store_true", help="Do not open a browser page after the server starts.")
     serve_parser.set_defaults(func=command_serve)
 
     wait_parser = subparsers.add_parser("wait", help="Wait for a ready status file.")

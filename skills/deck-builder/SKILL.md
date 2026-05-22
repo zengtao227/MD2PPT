@@ -244,7 +244,7 @@ python3 scripts/presentation_director.py init \
 3. Start the local UI server:
 
 ```bash
-python3 scripts/presentation_director.py serve --task "<short task slug>" --open-page intake
+python3 scripts/presentation_director.py serve --task "<short task slug>"
 ```
 
 4. Do not ask the user to copy a URL. The intake page should open in the default browser. The user will submit intake choices, review the confirmation page, and then click confirm. If the page does not open, use:
@@ -252,6 +252,8 @@ python3 scripts/presentation_director.py serve --task "<short task slug>" --open
 ```bash
 python3 scripts/presentation_director.py open-page --task "<short task slug>" --page intake
 ```
+
+For batch or background runs, use `--no-open` and log the printed URL instead of opening a browser.
 
 5. Wait for confirmation:
 
