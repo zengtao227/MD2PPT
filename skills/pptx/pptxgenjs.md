@@ -376,7 +376,32 @@ titleSlide.addText("My Title", { placeholder: "title" });
 
 ⚠️ These issues cause file corruption, visual bugs, or broken output. Avoid them.
 
-1. **NEVER use "#" with hex colors** - causes file corruption
+1. **NEVER use negative `h` for diagonal line shapes** — generates invalid OOXML (`cy` < 0) that forces a PowerPoint repair dialog on every open. Use `flipV: true` with a positive `h` instead. A safe helper:
+   ```javascript
+   function drawLine(slide, x1, y1, x2, y2, lineOpts) {
+     var dx = x2 - x1, dy = y2 - y1;
+     if (dy >= 0) {
+       slide.addShape(prs.ShapeType.line, { x: x1, y: y1, w: dx, h: dy, line: lineOpts });
+     } else {
+       // negative h → use bounding box (x1,y2,dx,|dy|) + flipV so line runs bottom-left→top-right
+       slide.addShape(prs.ShapeType.line, { x: x1, y: y2, w: dx, h: -dy, flipV: true, line: lineOpts });
+     }
+   }
+   ```
+   Use `drawLine(slide, x1, y1, x2, y2, { color: "...", width: 2 })` for all diagonal segments including chart curves and arrows.
+
+2. **NEVER stretch images** — always preserve the original aspect ratio. Measure the source image dimensions, calculate the display size proportionally, and place the image explicitly. Do NOT rely on `sizing: { type: 'contain' }` when the bounding box has a very different ratio than the source — it may not letterbox correctly in all PowerPoint versions.
+   ```javascript
+   // Measure source: width=806, height=2026 → ratio=0.398 (portrait)
+   const imgH = 3.5;                    // fix height to available space
+   const imgW = imgH * (806 / 2026);    // derive width from actual ratio → 1.39"
+   const imgX = colX + (colW - imgW) / 2;  // center in its column
+   slide.addImage({ path: '...', x: imgX, y: iy, w: imgW, h: imgH });
+   ```
+
+3. **NEVER let one layer's content overlap another layer's text** — when stacking shapes/text boxes, calculate coordinates to ensure each element ends before the next begins. Common case: a summary/result bar placed at a fixed offset from the card bottom can overlap the last item if the item count changes.
+
+4. **NEVER use "#" with hex colors** - causes file corruption
    ```javascript
    color: "FF0000"      // ✅ CORRECT
    color: "#FF0000"     // ❌ WRONG
