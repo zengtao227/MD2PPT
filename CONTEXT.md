@@ -119,6 +119,12 @@ Codex Presentations 插件内部可能仍按插件规则使用 `outputs/<thread-
 
 本地 `skills/pptx` + pptxgenjs 路径。用于 Claude Code 或没有 Codex `Presentations` 能力时的备用方案。
 
+### 工作流优先级
+
+1. Codex `Presentations`：全新、可编辑、可验证 PPTX 的首选。
+2. Claude Code / 本地代理：`skills/pptx` + pptxgenjs，适合没有 Codex `Presentations` 的可编辑备选路径。
+3. VS Code + Marp：快速草稿、预览、PDF 和放映版，不作为默认的专业 PPTX 路径。
+
 ## 当前推荐路径
 
 ```text

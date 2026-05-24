@@ -2,7 +2,7 @@
   "name": "md2ppt",
   "version": "1.0.0",
   "private": false,
-  "description": "A stable Markdown to PPTX/PDF workflow based on Marp.",
+  "description": "Presentation Director workflow for editable PPTX generation with Marp fallback.",
   "scripts": {
     "export:html": "marp deck.md --html --allow-local-files -o outputs/deck.html",
     "export:pdf": "marp deck.md --pdf --allow-local-files -o outputs/deck.pdf",
@@ -13,4 +13,3 @@
     "@marp-team/marp-cli": "^4.2.3"
   }
 }
-
