@@ -1,13 +1,13 @@
 ---
 name: deck-builder
-description: Orchestrates professional presentation creation from source materials. In Codex net-new PPTX requests, this skill MUST run Presentation Director intake and brief confirmation before Codex Presentations. For Claude/offline/HTML paths it coordinates deck.md planning, design intelligence, visual contracts, and verified output. Do NOT trigger for small edits to existing slides, quick Marp/reveal.js previews, or requests that do not require a new deck workflow.
+description: Orchestrates professional presentation creation from source materials. In Codex net-new PPTX requests, this skill MUST run Presentation Director intake, research strategy, visual inspiration, and brief confirmation before Codex Presentations. For Claude/offline/HTML paths it coordinates deck.md planning, design intelligence, visual contracts, and verified output. Do NOT trigger for small edits to existing slides, quick Marp/reveal.js previews, or requests that do not require a new deck workflow.
 ---
 
 # Deck Builder
 
 A workflow orchestration skill for building professional presentations.
 
-In Codex, this skill is the front door for net-new PPTX requests: run `Presentation Director` first, then hand the confirmed brief to the Codex Presentations plugin. Do not let Codex Presentations start from an unconfirmed prompt unless the user explicitly asks to skip the director.
+In Codex, this skill is the front door for net-new PPTX requests: run `Presentation Director` first, confirm research strategy and visual inspiration, then hand the confirmed brief to the Codex Presentations plugin. Do not let Codex Presentations start from an unconfirmed prompt unless the user explicitly asks to skip the director.
 
 Outside Codex, this skill coordinates the fuller deck.md-centered workflow: source material through slide planning, design intelligence, visual contract, and verified PPTX or HTML output.
 
@@ -152,27 +152,33 @@ Use this path when Codex has the Presentations plugin available and the user ask
     topic / links / files / folder / existing notes
         ↓
 [2] Presentation Director intake
-    click-based audience, goal, source boundary, logo policy, image policy, output constraints
+    click-based audience, goal, source paths/URLs, research strategy, source boundary, logo policy, image policy, output constraints
         ↓
-[3] Brief Confirmation Gate  ← HARD STOP
+[3] Research Strategy Gate
+    Codex deep web research / external Deep Research packet / hybrid / provided-only
+        ↓
+[4] Visual Inspiration Gate
+    3 dynamic visual candidates from topic, deck type, audience, design-locks, ui-ux-pro-max, and deck UI references
+        ↓
+[5] Brief Confirmation Gate  ← HARD STOP
     user reviews the summarized plan and clicks "confirm"
         ↓
-[4] Codex Presentations
+[6] Codex Presentations
     confirmed brief → claim spine → design system → contact-sheet plan → editable PPTX
         ↓
-[5] Render QA
+[7] Render QA
     previews + layout JSON + contact sheet + fix-and-rerender
         ↓
-[6] Style Review
+[8] Style Review
     user chooses keep/current or visual revision directions
         ↓
-[7] Optional Revised Versions + Compare
+[9] Optional Revised Versions + Compare
         ↓
 PPTX/<task-slug>/final/<deck-title>.pptx
 PPTX/<task-slug>/final/<deck-title>.html
 ```
 
-For this Codex path, do not pre-lock `design-locks/`, palette, or per-slide layout before v1 unless the user explicitly asks. The goal is to lock intent and source boundaries, then give Presentations room to produce a stronger first draft.
+For this Codex path, do not pre-lock `design-locks/`, palette, or per-slide layout before v1 unless the user explicitly asks. The visual inspiration gate should select a direction, not a rigid template. The goal is to lock intent, source boundaries, research strategy, and visual target, then give Presentations room to produce a stronger first draft.
 
 ### Claude / Offline / HTML Path
 
@@ -214,7 +220,7 @@ Skipping Step 2 produces information dumps, not presentations.
 
 | Environment | Generation Path | Notes |
 |-------------|-----------------|-------|
-| Codex net-new PPTX | Presentation Director → Presentations plugin **(primary PPTX)** | Intake + brief confirmation must happen before `artifact-tool presentation-jsx` |
+| Codex net-new PPTX | Presentation Director → Presentations plugin **(primary PPTX)** | Intake + research strategy + visual inspiration + brief confirmation must happen before `artifact-tool presentation-jsx` |
 | Codex targeted edit / confirmed brief | Presentations plugin | Direct only when not creating a new deck or when `brief-confirmed.json` already exists |
 | Claude Code / offline | `skills/pptx` + pptxgenjs **(fallback PPTX)** | pptxgenjs |
 | Either | HTML deck skill, when installed | `html-ppt-skill` or `guizang-ppt-skill`; secondary output for online sharing |

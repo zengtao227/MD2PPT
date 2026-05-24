@@ -43,6 +43,7 @@ STATUS_FILES: dict[str, str] = {
 }
 PAGE_PATHS: dict[str, str] = {
     "intake": "/intake",
+    "visual-inspiration": "/visual-inspiration",
     "confirm": "/confirm",
     "style-review": "/style-review",
     "compare": "/compare",
@@ -65,6 +66,23 @@ class Question:
     default: str
 
 
+@dataclass(frozen=True)
+class VisualCandidate:
+    key: str
+    name: str
+    summary: str
+    best_for: str
+    avoid_for: str
+    palette: tuple[str, str, str, str]
+    background: str
+    typography: str
+    layout: str
+    chart: str
+    image_strategy: str
+    inspiration: str
+    risk: str
+
+
 INTAKE_QUESTIONS: tuple[Question, ...] = (
     Question(
         key="deck_type",
@@ -78,6 +96,19 @@ INTAKE_QUESTIONS: tuple[Question, ...] = (
             Choice("knowledge-teaching", "学术 / 课程 / 知识讲解", "把复杂材料重组成清晰知识结构。"),
             Choice("sales-product", "客户销售 / 产品介绍", "展示痛点、方案、demo 和价值证明。"),
             Choice("custom", "自定义", "我有自己的类型描述。"),
+        ),
+    ),
+    Question(
+        key="research_strategy",
+        title="资料研究策略",
+        prompt="如果资料不完整，先怎么获得研究材料?",
+        default="hybrid-deep-research",
+        choices=(
+            Choice("hybrid-deep-research", "Hybrid：外部 Deep Research + Codex 定点核验", "适合医学、产业、政策、技术趋势等资料密集主题。"),
+            Choice("codex-web-deep", "Codex 深度联网研究", "由 Codex 查找、筛选、核验资料；更耗时和 token。"),
+            Choice("external-deep-research", "Gemini / Perplexity Deep Research 资料包", "先用外部 Deep Research 做广覆盖，再把资料包交给 Codex 结构化。"),
+            Choice("provided-materials", "只用我提供的资料", "不主动联网，缺失信息必须标注。"),
+            Choice("custom", "自定义", "我有自己的研究资料策略。"),
         ),
     ),
     Question(
@@ -328,6 +359,350 @@ def selected_choice(question: Question, value: str) -> Choice:
     return next(choice for choice in question.choices if choice.value == question.default)
 
 
+def default_intake_value(question: Question, sources: list[str]) -> str:
+    if question.key == "source_boundary":
+        return "provided-only" if sources else "web-with-sources"
+    if question.key == "research_strategy":
+        if not sources:
+            return "hybrid-deep-research"
+        source_text: str = " ".join(sources).lower()
+        if any(token in source_text for token in ("gemini", "perplexity", "deep-research", "deep research")):
+            return "external-deep-research"
+        return "provided-materials"
+    return question.default
+
+
+def selection_value(selections: JsonDict, key: str, default: str = "") -> str:
+    item: Any = selections.get(key, {})
+    if isinstance(item, dict):
+        return str(item.get("value", default))
+    return default
+
+
+def visual_candidate_to_json(candidate: VisualCandidate) -> JsonDict:
+    return {
+        "key": candidate.key,
+        "name": candidate.name,
+        "summary": candidate.summary,
+        "best_for": candidate.best_for,
+        "avoid_for": candidate.avoid_for,
+        "palette": list(candidate.palette),
+        "background": candidate.background,
+        "typography": candidate.typography,
+        "layout": candidate.layout,
+        "chart": candidate.chart,
+        "image_strategy": candidate.image_strategy,
+        "inspiration": candidate.inspiration,
+        "risk": candidate.risk,
+    }
+
+
+def classify_visual_context(topic: str, selections: JsonDict) -> str:
+    deck_type: str = selection_value(selections, "deck_type")
+    audience: str = selection_value(selections, "audience")
+    text: str = f"{topic} {deck_type} {audience}".lower()
+    if any(token in text for token in ("体育", "足球", "篮球", "运动", "赛事", "sports", "football", "basketball", "club")):
+        return "sports"
+    if any(token in text for token in ("战略", "策略", "规划", "运营", "组织", "增长", "strategy", "planning", "operations")):
+        return "strategy"
+    if any(token in text for token in ("医学", "药", "临床", "疾病", "研究", "alzheimer", "clinical", "biotech", "medical", "research")):
+        return "research"
+    if deck_type in {"engineering-platform"} or any(token in text for token in ("工程", "架构", "系统", "平台", "infra", "architecture", "developer")):
+        return "engineering"
+    if deck_type in {"investor-pitch", "sales-product"}:
+        return "market"
+    return "general"
+
+
+def build_visual_candidates(topic: str, selections: JsonDict) -> tuple[VisualCandidate, ...]:
+    context: str = classify_visual_context(topic, selections)
+    libraries: dict[str, tuple[VisualCandidate, ...]] = {
+        "sports": (
+            VisualCandidate(
+                "broadcast-analytics",
+                "Broadcast Analytics",
+                "像体育转播数据大屏，节奏强、数字醒目、对比高。",
+                "赛事复盘、球队经营、体育商业分析。",
+                "严肃学术汇报或低调内部材料。",
+                ("#07111f", "#f7f8fb", "#24d18b", "#ffcc33"),
+                "深色场地感背景，少量动线和数据网格。",
+                "粗标题 + 紧凑数字标签。",
+                "比分板式大数字、左右对抗、关键事件时间线。",
+                "排名、雷达、趋势线，直接标注而少用图例。",
+                "真实赛事/训练素材优先；没有素材时使用抽象运动轨迹。",
+                "sports broadcast UI + html deck theme catalog + evidence dashboard",
+                "容易过于娱乐化，商业策略页需要降噪。",
+            ),
+            VisualCandidate(
+                "performance-lab",
+                "Performance Lab",
+                "运动科学实验室风格，干净、精准、强调指标和方法。",
+                "训练表现、运动医学、青训体系、数据分析。",
+                "需要强情绪感染力的路演封面。",
+                ("#f4f7f8", "#17202a", "#006b7a", "#f05a28"),
+                "浅底实验室网格，局部使用测量线和坐标标尺。",
+                "清晰无衬线，数字使用 tabular 风格。",
+                "指标卡 + 流程图 + 对比切片。",
+                "小 multiples、区间带、前后对照。",
+                "真实运动员素材需来源明确；可用抽象人体运动线框。",
+                "performance dashboard + scientific poster + ui-ux-pro-max chart grammar",
+                "可能偏理性，封面需要额外增强视觉冲击。",
+            ),
+            VisualCandidate(
+                "club-strategy-room",
+                "Club Strategy Room",
+                "俱乐部董事会/战术室风格，适合把体育主题讲成战略问题。",
+                "球队战略、商业化、组织治理、赞助规划。",
+                "纯技术训练分析。",
+                ("#102033", "#f0eadc", "#b99855", "#e85d04"),
+                "暖纸 + 深色战术线，背景像会议室白板和策略地图。",
+                "稳重标题字体，正文较克制。",
+                "战略地图、路径图、stakeholder matrix。",
+                "瀑布图、路线图、二维象限。",
+                "尽量使用真实 logo/球衣/场馆素材；无授权则不用。",
+                "strategy room + editorial deck + locked visual contract",
+                "如果资料很多，需要避免把每页做成咨询报告表格。",
+            ),
+        ),
+        "strategy": (
+            VisualCandidate(
+                "executive-boardroom",
+                "Executive Boardroom",
+                "高层决策汇报风格，克制但有权威感。",
+                "战略规划、预算、组织调整、董事会汇报。",
+                "创意发布会或教学课程。",
+                ("#0f172a", "#f8fafc", "#3b82f6", "#c8a24a"),
+                "浅底为主，关键页使用深色整页强调。",
+                "强层级标题，正文短句化。",
+                "决策摘要、风险矩阵、路线图、经营仪表盘。",
+                "waterfall、scenario matrix、milestone roadmap。",
+                "少装饰，优先使用真实业务图表和图标。",
+                "consulting deck + executive dashboard + design-lock discipline",
+                "如果全程深色，会显得压抑；应控制深色页比例。",
+            ),
+            VisualCandidate(
+                "consulting-roadmap",
+                "Consulting Roadmap",
+                "咨询公司路线图风格，结构强、阶段清楚。",
+                "三年规划、转型项目、市场进入策略。",
+                "需要强品牌个性的产品发布。",
+                ("#ffffff", "#111827", "#2563eb", "#f97316"),
+                "纯白背景，细线分区，少量高饱和强调。",
+                "标题结论句化，正文像 executive memo。",
+                "阶段推进、2x2、能力地图、优先级排序。",
+                "矩阵、堆叠条、战略地图。",
+                "不依赖图片，强调结构图和业务对象。",
+                "strategy scaffold + html-ppt-skill template catalog + ui-ux-pro-max UX rules",
+                "容易变成普通咨询模板，需要用主题专属 proof object 打破通用感。",
+            ),
+            VisualCandidate(
+                "operating-model-dashboard",
+                "Operating Model Dashboard",
+                "运营模型仪表盘风格，适合把规划落到指标和机制。",
+                "年度经营计划、组织运行、OKR、流程治理。",
+                "纯品牌故事或情绪型演讲。",
+                ("#eef2f6", "#1f2937", "#0f766e", "#7c3aed"),
+                "浅灰工作台背景，模块边界清楚，强调可扫描。",
+                "中等字号、高信息密度但留白稳定。",
+                "机制图、RACI、节奏表、指标看板。",
+                "KPI cards、heatmap、pipeline funnel。",
+                "真实流程图/组织图优先，不用装饰性背景图。",
+                "operational SaaS UI + dashboard grammar + quality gates",
+                "过密时容易不适合演讲，需要 split slide。",
+            ),
+        ),
+        "research": (
+            VisualCandidate(
+                "clinical-atlas",
+                "Clinical Atlas",
+                "研究图谱风格，适合复杂证据链和研发路径。",
+                "医学、生命科学、政策研究、技术综述。",
+                "销售型产品发布和强情绪路演。",
+                ("#f6f8fb", "#132238", "#0f6f8f", "#d97706"),
+                "浅底研究图谱，局部使用细网格、节点和证据线。",
+                "学术无衬线，标题清楚，来源小字统一。",
+                "证据链、pipeline、机制图、分层框架。",
+                "pipeline、forest-like comparison、evidence table。",
+                "真实图表和示意图优先；AI 图只作抽象章节背景。",
+                "academic design-lock + evidence dashboard + source-first QA",
+                "如果每页都很理性，封面和章节页需要更强视觉记忆点。",
+            ),
+            VisualCandidate(
+                "biotech-pipeline",
+                "Biotech Pipeline",
+                "生物科技投资人 deck 风格，重点突出机会、管线和决策。",
+                "药物研发、创新技术、融资路演、BD 汇报。",
+                "纯课程教学或极保守学术答辩。",
+                ("#08111f", "#f8fafc", "#4cc9f0", "#ffb703"),
+                "深浅交替，封面和章节页有高对比抽象分子/路径背景。",
+                "大标题 + 突出 milestone 和数据。",
+                "研发管线、市场窗口、风险消减、里程碑。",
+                "pipeline chart、TAM blocks、risk ladder。",
+                "可生成抽象科学背景，但不能伪造实验图片或监管标志。",
+                "startup pitch + clinical pipeline layout + visual preview selection",
+                "容易过度路演化，需保留来源和监管谨慎语气。",
+            ),
+            VisualCandidate(
+                "medical-editorial",
+                "Medical Editorial",
+                "高质量医学长文/期刊特稿风格，适合解释复杂主题。",
+                "研究综述、课程讲解、公众科普、专家分享。",
+                "需要强销售转化的商业 deck。",
+                ("#f2efe8", "#1f2933", "#6b7c93", "#b35c1e"),
+                "暖纸底、细分隔线、少量图像纹理。",
+                "出版物式标题，正文段落可读性优先。",
+                "定义、分层、对比、时间线、注释式图表。",
+                "annotated timeline、small multiples、callout table。",
+                "少量抽象背景；内容页保持干净。",
+                "editorial design-lock + beautiful template contract + typography rules",
+                "可能不够有冲击力，商业听众需要增加关键数字页。",
+            ),
+        ),
+        "engineering": (
+            VisualCandidate(
+                "signal-system",
+                "Signal System",
+                "系统评审风格，清晰、工程化、数据前置。",
+                "平台架构、工程汇报、技术路线、SRE/数据系统。",
+                "品牌发布会或教学科普。",
+                ("#f8fafc", "#111827", "#0061ff", "#16a34a"),
+                "浅底工程网格，少量蓝色信号线。",
+                "紧凑标题，代码/指标用等宽或 tabular 数字。",
+                "架构图、数据流、模块责任、指标看板。",
+                "latency charts、dependency map、before/after bars。",
+                "真实截图优先，截图可美化但不重画事实。",
+                "Signal design language + architecture QA + screenshot treatment rules",
+                "如果不加故事节奏，容易像技术文档。",
+            ),
+            VisualCandidate(
+                "terminal-architecture",
+                "Terminal Architecture",
+                "高对比开发者工具风格，适合代码和基础设施。",
+                "infra、DevOps、AI agent、开发者平台。",
+                "非技术高层或客户销售。",
+                ("#09090b", "#fafafa", "#7dd3fc", "#a3e635"),
+                "深色终端背景，细线拓扑和命令行提示。",
+                "大标题清晰，代码块严格控制长度。",
+                "系统拓扑、调用链、状态机、故障演练。",
+                "sequence diagram、service map、error budget chart。",
+                "避免假 UI；真实终端/产品截图需来源明确。",
+                "Terminal design language + locked layout IDs + render QA",
+                "不适合长正文，文字必须拆页。",
+            ),
+            VisualCandidate(
+                "product-operations",
+                "Product Operations",
+                "产品运营工作台风格，适合把技术价值讲给业务方。",
+                "产品方案、客户场景、运营效率、自动化平台。",
+                "底层架构深挖。",
+                ("#f4f6f8", "#1f2937", "#0ea5e9", "#f59e0b"),
+                "浅灰 SaaS 工作台，但减少普通卡片堆叠。",
+                "清楚的组件标题和短解释。",
+                "用户旅程、功能流程、价值闭环、仪表盘。",
+                "funnel、cohort trend、task flow。",
+                "真实产品截图优先，必要时使用线框场景图。",
+                "SaaS UI + product launch scaffold + no generic card grid rule",
+                "若卡片过多会显得普通，需要开放构图页做节奏变化。",
+            ),
+        ),
+        "market": (
+            VisualCandidate(
+                "studio-pitch",
+                "Studio Pitch",
+                "更像高质量创业路演，节奏快、对比强、视觉记忆点明显。",
+                "融资、比赛、产品发布、BD。",
+                "监管、医学、法务等需要克制语气的汇报。",
+                ("#101828", "#ffffff", "#5b7cfa", "#ff6b35"),
+                "深浅切换，大封面和章节图形成记忆点。",
+                "短标题、大数字、强对比。",
+                "问题-方案-证明-增长-请求。",
+                "traction chart、market map、before/after。",
+                "可以用抽象概念图，但不能伪造客户 logo 或产品截图。",
+                "Studio design language + pitch deck scaffold + visual-led HTML previews",
+                "若证据不足，强表现力会放大可信度风险。",
+            ),
+            VisualCandidate(
+                "product-launch",
+                "Product Launch",
+                "产品发布会风格，突出用户场景和体验。",
+                "新品发布、功能介绍、客户演示。",
+                "高密度内部复盘。",
+                ("#ffffff", "#0f172a", "#7c3aed", "#06b6d4"),
+                "干净背景 + 大图区域 + 少量品牌渐变。",
+                "标题直接，辅助文案短。",
+                "场景、功能、流程、价值证明。",
+                "feature matrix、workflow、adoption trend。",
+                "真实产品截图优先；无截图时用抽象线框，不伪造 UI。",
+                "product launch template + screenshot slot contract + ui-ux-pro-max style match",
+                "如果没有真实素材，视觉会偏概念化。",
+            ),
+            VisualCandidate(
+                "brand-narrative",
+                "Brand Narrative",
+                "品牌叙事风格，强调信任、愿景和故事线。",
+                "品牌升级、客户提案、公益/教育项目。",
+                "纯技术评审或数据审计。",
+                ("#f7f2e8", "#1c1917", "#2563eb", "#c2410c"),
+                "暖底、摄影/插画槽位、章节像短篇故事。",
+                "叙事标题，正文强调节奏。",
+                "用户故事、价值阶梯、生态地图。",
+                "impact metrics、quote callout、timeline。",
+                "真实人物/客户素材必须授权；否则使用抽象场景图。",
+                "editorial template + brand system + visual contract depth",
+                "如果目标是做决策，故事页必须配决策页。",
+            ),
+        ),
+    }
+    default_candidates: tuple[VisualCandidate, ...] = (
+        VisualCandidate(
+            "atlas-explanatory",
+            "Atlas Explanatory",
+            "结构化知识图谱风格，适合把复杂主题讲清楚。",
+            "研究、课程、政策、行业分析。",
+            "强销售转化或纯代码评审。",
+            ("#f6f3ee", "#1f2937", "#2563eb", "#b45309"),
+            "浅底、细网格、少量章节色块。",
+            "稳健标题，正文强调可读性。",
+            "框架图、时间线、对比表、证据链。",
+            "timeline、matrix、annotated chart。",
+            "抽象背景只用于封面和章节页。",
+            "Atlas design language + design-lock registry + source-first planner",
+            "可能偏解释型，需要在封面增强主题记忆点。",
+        ),
+        VisualCandidate(
+            "signal-dashboard",
+            "Signal Dashboard",
+            "数据和机制先行，适合把主题变成可行动判断。",
+            "策略、运营、工程、管理汇报。",
+            "情绪型演讲或品牌故事。",
+            ("#f8fafc", "#0f172a", "#0f766e", "#f59e0b"),
+            "浅灰工作台背景，图表和流程为主。",
+            "数字清楚，标签短。",
+            "dashboard、flow、roadmap、decision matrix。",
+            "KPI、trend、heatmap、funnel。",
+            "少图片，多使用原生图表和形状。",
+            "Signal design language + dashboard UI + quality gates",
+            "容易过密，必须控制每页 proof object 数量。",
+        ),
+        VisualCandidate(
+            "studio-visual",
+            "Studio Visual",
+            "更强视觉表达，适合需要第一眼吸引力的 deck。",
+            "路演、发布、竞赛、客户提案。",
+            "保守审计或纯学术材料。",
+            ("#111827", "#ffffff", "#6366f1", "#f97316"),
+            "强封面、章节视觉和深浅对比。",
+            "大标题、短句、视觉锚点。",
+            "hero statement、before/after、proof snapshot。",
+            "大数字、对比图、简化趋势。",
+            "允许抽象概念图，禁止伪造真实资产。",
+            "Studio design language + 3-preview workflow + visual-led templates",
+            "表现力强时更需要事实来源压住可信度。",
+        ),
+    )
+    return libraries.get(context, default_candidates)
+
+
 def html_page(title: str, body: str) -> str:
     return f"""<!doctype html>
 <html lang="zh-CN">
@@ -409,6 +784,25 @@ def html_page(title: str, body: str) -> str:
     .meta {{ color: var(--muted); font-size: 13px; }}
     .source-tag {{ display: inline-block; padding: 2px 7px; border-radius: 999px; background: #ebe3d5; font-size: 12px; color: #554; }}
     .risk {{ border-left: 4px solid var(--accent-2); padding-left: 12px; }}
+    .candidate {{ min-height: 100%; }}
+    .candidate input {{ margin-right: 8px; }}
+    .swatches-preview {{ display: flex; gap: 6px; margin: 12px 0; }}
+    .swatch-preview {{ width: 34px; height: 22px; border-radius: 4px; border: 1px solid rgba(0,0,0,.12); }}
+    .mini-slides {{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }}
+    .mini-slide {{
+      aspect-ratio: 16 / 9;
+      border-radius: 6px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid rgba(0,0,0,.14);
+      overflow: hidden;
+    }}
+    .mini-slide strong {{ font-size: 12px; line-height: 1.15; }}
+    .mini-slide span {{ display: block; width: 60%; height: 5px; border-radius: 99px; opacity: .9; }}
+    .mini-bars {{ display: grid; gap: 4px; }}
+    .mini-bars i {{ display: block; height: 5px; border-radius: 99px; opacity: .86; }}
     .contact-sheet {{
       width: 100%;
       max-height: 520px;
@@ -461,10 +855,7 @@ def question_section(question: Question, current: str = "") -> str:
 
 
 def build_draft_brief(task_slug: str, topic: str, sources: list[str]) -> JsonDict:
-    source_items: list[JsonDict] = [
-        {"path": source, "priority": "primary", "type": infer_source_type(source)}
-        for source in sources
-    ]
+    source_items: list[JsonDict] = build_source_items(sources)
     return {
         "version": "0.1",
         "task_slug": task_slug,
@@ -472,8 +863,8 @@ def build_draft_brief(task_slug: str, topic: str, sources: list[str]) -> JsonDic
         "sources": source_items,
         "selections": {
             question.key: {
-                "value": question.default,
-                "label": selected_choice(question, question.default).label,
+                "value": default_intake_value(question, sources),
+                "label": selected_choice(question, default_intake_value(question, sources)).label,
                 "source": "default",
             }
             for question in INTAKE_QUESTIONS
@@ -485,6 +876,11 @@ def build_draft_brief(task_slug: str, topic: str, sources: list[str]) -> JsonDic
 
 
 def infer_source_type(source: str) -> str:
+    lowered: str = source.lower()
+    if re.match(r"https?://", source) and (
+        "drive.google.com" in lowered or "docs.google.com" in lowered
+    ):
+        return "google-drive-url"
     if re.match(r"https?://", source):
         return "url"
     path: Path = Path(source).expanduser()
@@ -492,6 +888,43 @@ def infer_source_type(source: str) -> str:
         return "folder"
     suffix: str = path.suffix.lower().lstrip(".")
     return suffix or "text"
+
+
+def build_source_items(sources: list[str]) -> list[JsonDict]:
+    return [
+        {"path": source, "priority": "primary", "type": infer_source_type(source)}
+        for source in sources
+        if source.strip()
+    ]
+
+
+def source_paths_from_items(sources: Any) -> list[str]:
+    if not isinstance(sources, list):
+        return []
+    paths: list[str] = []
+    for source in sources:
+        if isinstance(source, dict):
+            path: str = str(source.get("path", "")).strip()
+            if path:
+                paths.append(path)
+    return paths
+
+
+def parse_sources_text(value: str) -> list[str]:
+    raw_items: list[str] = re.split(r"[\n,]+", value)
+    seen: set[str] = set()
+    sources: list[str] = []
+    for raw_item in raw_items:
+        source: str = raw_item.strip()
+        if not source or source in seen:
+            continue
+        seen.add(source)
+        sources.append(source)
+    return sources
+
+
+def format_sources_text(sources: Any) -> str:
+    return "\n".join(source_paths_from_items(sources))
 
 
 def infer_risks(sources: list[JsonDict]) -> list[str]:
@@ -508,8 +941,19 @@ def infer_risks(sources: list[JsonDict]) -> list[str]:
 
 def apply_intake_selection(draft: JsonDict, form: dict[str, list[str]]) -> JsonDict:
     selections: JsonDict = {}
+    draft_selections: JsonDict = draft.get("selections", {})
+    form_sources_text: str = first_form_value(form, "sources_text", "").strip()
+    draft_sources: list[str] = source_paths_from_items(draft.get("sources", []))
+    selected_sources: list[str] = parse_sources_text(form_sources_text) if form_sources_text else draft_sources
+    selected_source_items: list[JsonDict] = build_source_items(selected_sources)
     for question in INTAKE_QUESTIONS:
-        value: str = first_form_value(form, question.key, question.default)
+        draft_item: Any = draft_selections.get(question.key, {})
+        fallback: str = (
+            str(draft_item.get("value", ""))
+            if isinstance(draft_item, dict) and draft_item.get("value")
+            else default_intake_value(question, selected_sources)
+        )
+        value: str = first_form_value(form, question.key, fallback)
         choice: Choice = selected_choice(question, value)
         custom: str = first_form_value(form, f"{question.key}__custom", "").strip()
         selections[question.key] = {
@@ -522,10 +966,49 @@ def apply_intake_selection(draft: JsonDict, form: dict[str, list[str]]) -> JsonD
             selections[question.key]["custom"] = custom
 
     brief: JsonDict = dict(draft)
+    brief["sources"] = selected_source_items
+    brief["risks"] = infer_risks(selected_source_items)
     brief["selections"] = selections
     brief["updated_at"] = datetime.now().isoformat(timespec="seconds")
     brief["confirmed"] = False
     return brief
+
+
+def apply_visual_selection(selected: JsonDict, form: dict[str, list[str]]) -> JsonDict:
+    topic: str = str(selected.get("topic", ""))
+    selections: JsonDict = selected.get("selections", {})
+    candidates: tuple[VisualCandidate, ...] = build_visual_candidates(topic, selections)
+    selected_key: str = first_form_value(form, "visual_candidate", candidates[0].key)
+    candidate: VisualCandidate = next((item for item in candidates if item.key == selected_key), candidates[0])
+    updated: JsonDict = dict(selected)
+    updated["visual_direction"] = {
+        "selected_candidate": visual_candidate_to_json(candidate),
+        "available_candidates": [visual_candidate_to_json(item) for item in candidates],
+        "source": "user-selected",
+        "notes": first_form_value(form, "visual_notes", "").strip(),
+        "selected_at": datetime.now().isoformat(timespec="seconds"),
+    }
+    updated["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    updated["confirmed"] = False
+    return updated
+
+
+def ensure_visual_selection(selected: JsonDict) -> JsonDict:
+    visual_direction: Any = selected.get("visual_direction", {})
+    if isinstance(visual_direction, dict) and isinstance(visual_direction.get("selected_candidate"), dict):
+        return selected
+    topic: str = str(selected.get("topic", ""))
+    selections: JsonDict = selected.get("selections", {})
+    candidate: VisualCandidate = build_visual_candidates(topic, selections)[0]
+    updated: JsonDict = dict(selected)
+    updated["visual_direction"] = {
+        "selected_candidate": visual_candidate_to_json(candidate),
+        "available_candidates": [visual_candidate_to_json(item) for item in build_visual_candidates(topic, selections)],
+        "source": "agent-recommended-default",
+        "notes": "",
+        "selected_at": datetime.now().isoformat(timespec="seconds"),
+    }
+    return updated
 
 
 def first_form_value(form: dict[str, list[str]], key: str, default: str) -> str:
@@ -695,15 +1178,21 @@ def render_intake(task_dir: Path) -> str:
     draft: JsonDict = read_json(task_dir / "brief-draft.json")
     current: JsonDict = read_json(task_dir / "intake-selection.json", draft)
     selections: JsonDict = current.get("selections", {})
-    source_list: str = render_sources(draft.get("sources", []))
+    current_sources: Any = current.get("sources", draft.get("sources", []))
+    source_list: str = render_sources(current_sources)
+    sources_text: str = format_sources_text(current_sources)
     body: str = f"""<div class="topline">Presentation Director</div>
 <h1>生成前信息收集</h1>
 <p>先确认会影响 PPTX 质量的关键信息。每题都有默认推荐，也可以选择自定义。</p>
 <section class="section">
   <h2>资料来源</h2>
   {source_list}
+  <label>资料路径 / 网页 / Google Drive 地址
+    <textarea name="sources_text" form="intake-form" placeholder="每行一个来源。例如：&#10;/Users/you/project/docs&#10;https://example.com/report&#10;https://drive.google.com/file/d/...&#10;https://docs.google.com/document/d/...">{html.escape(sources_text)}</textarea>
+  </label>
+  <p class="meta">可以填写本地文件夹、本地文件、普通网页 URL、Google Drive / Docs / Slides / Sheets 地址。Google Drive 地址会作为来源链接记录，后续由 agent 按权限读取或要求你授权。</p>
   <label>主题 / 标题
-    <input type="text" name="topic" form="intake-form" value="{html.escape(str(draft.get("topic", "")))}">
+    <input type="text" name="topic" form="intake-form" value="{html.escape(str(current.get("topic", draft.get("topic", ""))))}">
   </label>
 </section>
 <form method="post" action="/api/intake" id="intake-form">
@@ -713,15 +1202,91 @@ def render_intake(task_dir: Path) -> str:
     <textarea name="notes" placeholder="例如必须保留的页面、禁用内容、特殊听众背景。">{html.escape(str(current.get("notes", "")))}</textarea>
   </section>
   <div class="actions">
-    <button type="submit">下一步：汇总确认</button>
+    <button type="submit">下一步：视觉候选</button>
   </div>
 </form>"""
     return html_page("Presentation Director Intake", body)
 
 
+def render_visual_inspiration(task_dir: Path) -> str:
+    draft: JsonDict = read_json(task_dir / "brief-draft.json")
+    selected: JsonDict = read_json(task_dir / "intake-selection.json", draft)
+    topic: str = str(selected.get("topic", draft.get("topic", "")))
+    selections: JsonDict = selected.get("selections", {})
+    candidates: tuple[VisualCandidate, ...] = build_visual_candidates(topic, selections)
+    visual_direction: JsonDict = selected.get("visual_direction", {})
+    current_key: str = str(
+        visual_direction.get("selected_candidate", {}).get("key", candidates[0].key)
+        if isinstance(visual_direction, dict)
+        else candidates[0].key
+    )
+    candidate_cards: list[str] = [
+        render_visual_candidate_card(candidate, current_key == candidate.key)
+        for candidate in candidates
+    ]
+    body: str = f"""<div class="topline">Visual Inspiration Gate</div>
+<h1>选择第一版视觉方向</h1>
+<p>这些候选会根据主题、PPT 类型和听众动态生成。它们借鉴 design-lock、ui-ux-pro-max、HTML deck/theme catalog 的做法，但最终仍交给 Codex Presentations 生成可编辑 PPTX。</p>
+<section class="section">
+  <h2>当前主题</h2>
+  <p><strong>{html.escape(topic)}</strong></p>
+</section>
+<form method="post" action="/api/visual-inspiration">
+  <div class="grid">
+    {''.join(candidate_cards)}
+  </div>
+  <section class="section">
+    <h2>视觉补充要求</h2>
+    <textarea name="visual_notes" placeholder="例如：更像顶级咨询公司、更少卡片、背景更有层次、适合医学研究听众。">{html.escape(str(visual_direction.get("notes", "") if isinstance(visual_direction, dict) else ""))}</textarea>
+  </section>
+  <div class="actions">
+    <a class="button secondary" href="/intake">返回修改 intake</a>
+    <button type="submit">下一步：汇总确认</button>
+  </div>
+</form>"""
+    return html_page("Presentation Director Visual Inspiration", body)
+
+
+def render_visual_candidate_card(candidate: VisualCandidate, checked: bool) -> str:
+    is_checked: str = " checked" if checked else ""
+    swatches: str = "".join(
+        f'<span class="swatch-preview" style="background:{html.escape(color)}"></span>'
+        for color in candidate.palette
+    )
+    bg_color: str = candidate.palette[0]
+    ink_color: str = candidate.palette[1]
+    accent: str = candidate.palette[2]
+    accent_2: str = candidate.palette[3]
+    return f"""<label class="option candidate">
+  <input type="radio" name="visual_candidate" value="{html.escape(candidate.key)}"{is_checked}>
+  <strong>{html.escape(candidate.name)}</strong>
+  <p>{html.escape(candidate.summary)}</p>
+  <div class="swatches-preview">{swatches}</div>
+  <div class="mini-slides" aria-hidden="true">
+    <div class="mini-slide" style="background:{html.escape(bg_color)}; color:{html.escape(ink_color)}">
+      <strong>{html.escape(candidate.name)}</strong>
+      <span style="background:{html.escape(accent)}"></span>
+    </div>
+    <div class="mini-slide" style="background:#fff; color:#1f2937">
+      <strong>Evidence page</strong>
+      <div class="mini-bars">
+        <i style="width:86%; background:{html.escape(accent)}"></i>
+        <i style="width:62%; background:{html.escape(accent_2)}"></i>
+        <i style="width:74%; background:{html.escape(ink_color)}"></i>
+      </div>
+    </div>
+  </div>
+  <p><strong>适合：</strong>{html.escape(candidate.best_for)}</p>
+  <p><strong>背景：</strong>{html.escape(candidate.background)}</p>
+  <p><strong>图表：</strong>{html.escape(candidate.chart)}</p>
+  <p><strong>借鉴：</strong>{html.escape(candidate.inspiration)}</p>
+  <p class="meta"><strong>风险：</strong>{html.escape(candidate.risk)}</p>
+</label>"""
+
+
 def render_sources(sources: Any) -> str:
     if not isinstance(sources, list) or not sources:
-        return "<p class='risk'>未记录资料来源。请在启动脚本时用 <code>--source</code> 传入。</p>"
+        return "<p class='risk'>未记录资料来源。可以在下面粘贴本地路径、网页 URL 或 Google Drive 地址。</p>"
     items: list[str] = []
     for source in sources:
         if not isinstance(source, dict):
@@ -748,6 +1313,20 @@ def render_confirm(task_dir: Path) -> str:
         )
     risks: list[str] = selected.get("risks", draft.get("risks", []))
     risk_html: str = "".join(f"<li>{html.escape(str(risk))}</li>" for risk in risks) or "<li>未发现明显风险。</li>"
+    visual_direction: JsonDict = selected.get("visual_direction", {})
+    selected_candidate: JsonDict = {}
+    if isinstance(visual_direction, dict):
+        raw_candidate: Any = visual_direction.get("selected_candidate", {})
+        if isinstance(raw_candidate, dict):
+            selected_candidate = raw_candidate
+    if not selected_candidate:
+        topic: str = str(selected.get("topic", draft.get("topic", "")))
+        candidates: tuple[VisualCandidate, ...] = build_visual_candidates(topic, selections)
+        selected_candidate = visual_candidate_to_json(candidates[0])
+    palette_html: str = "".join(
+        f'<span class="swatch-preview" style="background:{html.escape(str(color))}"></span>'
+        for color in selected_candidate.get("palette", [])
+    )
     body: str = f"""<div class="topline">Brief Confirmation Gate</div>
 <h1>确认生成简报</h1>
 <p>请最后确认一次。只有点击“确认并开始生成”后，agent 才应调用 Codex Presentations plugin。</p>
@@ -767,6 +1346,17 @@ def render_confirm(task_dir: Path) -> str:
   </table>
 </section>
 <section class="section">
+  <h2>选定视觉方向</h2>
+  <h3>{html.escape(str(selected_candidate.get("name", "")))}</h3>
+  <p>{html.escape(str(selected_candidate.get("summary", "")))}</p>
+  <div class="swatches-preview">{palette_html}</div>
+  <p><strong>背景策略：</strong>{html.escape(str(selected_candidate.get("background", "")))}</p>
+  <p><strong>版式节奏：</strong>{html.escape(str(selected_candidate.get("layout", "")))}</p>
+  <p><strong>图表语法：</strong>{html.escape(str(selected_candidate.get("chart", "")))}</p>
+  <p><strong>图片策略：</strong>{html.escape(str(selected_candidate.get("image_strategy", "")))}</p>
+  <p><strong>风险：</strong>{html.escape(str(selected_candidate.get("risk", "")))}</p>
+</section>
+<section class="section">
   <h2>生成前风险</h2>
   <ul>{risk_html}</ul>
 </section>
@@ -776,7 +1366,7 @@ def render_confirm(task_dir: Path) -> str:
 </section>
 <form method="post" action="/api/confirm">
   <div class="actions">
-    <a class="button secondary" href="/intake">返回修改</a>
+    <a class="button secondary" href="/visual-inspiration">返回修改视觉方向</a>
     <button type="submit">确认并开始生成</button>
   </div>
 </form>"""
@@ -890,6 +1480,7 @@ def render_compare(task_dir: Path) -> str:
 
 def render_all_pages(task_dir: Path) -> None:
     write_text(task_dir / "intake.html", render_intake(task_dir))
+    write_text(task_dir / "visual-inspiration.html", render_visual_inspiration(task_dir))
     write_text(task_dir / "brief-confirm.html", render_confirm(task_dir))
     write_text(task_dir / "style-review.html", render_style_review(task_dir))
     write_text(task_dir / "compare.html", render_compare(task_dir))
@@ -927,11 +1518,11 @@ Confirmed brief:
 {json.dumps(brief, ensure_ascii=False, indent=2)}
 
 Rules:
-- Audience, goal, source boundary, logo policy, image policy, and output constraints are locked.
+- Audience, goal, research strategy, source boundary, logo policy, image policy, selected visual direction, and output constraints are locked.
 - Do not fabricate metrics, logos, customer names, screenshots, or official-looking brand assets.
 - Use official or user-provided brand assets only.
 - AI images are allowed only according to the confirmed image policy.
-- Composition, layout rhythm, chart treatment, typography hierarchy, and visual expression are delegated to Presentations.
+- Composition, layout rhythm, chart treatment, typography hierarchy, and visual expression should follow the selected visual candidate while still using Presentations' judgment.
 - Do not use a fixed design-lock unless the confirmed brief explicitly asks for it.
 
 Output:
@@ -1008,6 +1599,8 @@ class DirectorHandler(BaseHTTPRequestHandler):
         path: str = parsed.path
         if path in ("/", "/intake"):
             self.send_html(render_intake(self.task_dir))
+        elif path == "/visual-inspiration":
+            self.send_html(render_visual_inspiration(self.task_dir))
         elif path == "/confirm":
             self.send_html(render_confirm(self.task_dir))
         elif path == "/style-review":
@@ -1037,11 +1630,20 @@ class DirectorHandler(BaseHTTPRequestHandler):
             brief["notes"] = first_form_value(form, "notes", "").strip()
             write_json(self.task_dir / "intake-selection.json", brief)
             render_all_pages(self.task_dir)
+            self.redirect("/visual-inspiration")
+        elif parsed.path == "/api/visual-inspiration":
+            selected: JsonDict = read_json(self.task_dir / "intake-selection.json")
+            if not selected:
+                selected = read_json(self.task_dir / "brief-draft.json")
+            updated: JsonDict = apply_visual_selection(selected, form)
+            write_json(self.task_dir / "intake-selection.json", updated)
+            render_all_pages(self.task_dir)
             self.redirect("/confirm")
         elif parsed.path == "/api/confirm":
             selected: JsonDict = read_json(self.task_dir / "intake-selection.json")
             if not selected:
                 selected = read_json(self.task_dir / "brief-draft.json")
+            selected = ensure_visual_selection(selected)
             selected["confirmed"] = True
             selected["confirmed_at"] = datetime.now().isoformat(timespec="seconds")
             write_json(self.task_dir / "brief-confirmed.json", selected)
@@ -1134,6 +1736,7 @@ def message_page(title: str, message: str) -> str:
 <section class="section"><p>{html.escape(message)}</p></section>
 <div class="actions">
   <a class="button" href="/intake">Intake</a>
+  <a class="button" href="/visual-inspiration">Visual Inspiration</a>
   <a class="button" href="/style-review">Style Review</a>
   <a class="button" href="/compare">Compare</a>
 </div>"""
@@ -1189,10 +1792,11 @@ def command_serve(args: argparse.Namespace) -> None:
     )
     server: ThreadingHTTPServer = ThreadingHTTPServer((args.host, args.port), handler_class)
     print(f"Serving Presentation Director for {task_dir}")
-    print(f"Intake:       http://{args.host}:{args.port}/intake")
-    print(f"Confirm:      http://{args.host}:{args.port}/confirm")
-    print(f"Style review: http://{args.host}:{args.port}/style-review")
-    print(f"Compare:      http://{args.host}:{args.port}/compare")
+    print(f"Intake:             http://{args.host}:{args.port}/intake")
+    print(f"Visual inspiration: http://{args.host}:{args.port}/visual-inspiration")
+    print(f"Confirm:            http://{args.host}:{args.port}/confirm")
+    print(f"Style review:       http://{args.host}:{args.port}/style-review")
+    print(f"Compare:            http://{args.host}:{args.port}/compare")
     if not args.no_open and args.open_page:
         open_director_page(args.host, args.port, args.open_page)
     try:

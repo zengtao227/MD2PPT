@@ -34,17 +34,23 @@
 [2] Presentation Director（Codex net-new PPTX）
     点击式收集听众、目标、资料边界、logo、AI 生图、输出限制
         ↓
-[3] brief confirmation gate
+[3] Research Strategy Gate
+    选择 Codex 深度联网、外部 Deep Research 资料包、Hybrid 或只用用户资料
+        ↓
+[4] Visual Inspiration Gate
+    根据主题和场景生成 3 个视觉方向候选，用户选择一个作为第一版视觉目标
+        ↓
+[5] brief confirmation gate
     用户确认后才调用 Codex Presentations
         ↓
-[4] Codex Presentations 生成
+[6] Codex Presentations 生成
     confirmed brief → claim spine → design system → contact-sheet plan
     → artifact-tool presentation JSX → render → QA → export v1
         ↓
-[5] style-review
+[7] style-review
     看 contact sheet，选择保持、换配色、换结构、增强表现力或生成对比版本
         ↓
-[6] final compare and selection
+[8] final compare and selection
         ↓
 [最终] PPTX/<task-slug>/final/<主题名>.pptx
        PPTX/<task-slug>/final/<主题名>.html

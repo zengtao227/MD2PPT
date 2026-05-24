@@ -2,7 +2,7 @@
 
 > Status: implemented prototype for Codex + Presentations plugin only.
 >
-> Goal: improve the real PPTX creation experience in Codex by adding a low-friction intake layer before generation and a visual revision layer after the first draft, while leaving high-quality PPTX rendering to the Codex Presentations plugin.
+> Goal: improve the real PPTX creation experience in Codex by adding a low-friction intake layer, a research strategy gate, a visual inspiration gate before generation, and a visual revision layer after the first draft, while leaving high-quality PPTX rendering to the Codex Presentations plugin.
 >
 > Prototype entrypoint: `scripts/presentation_director.py`, a thin wrapper around `skills/deck-builder/scripts/presentation_director.py` so the same helper can ship with the global `deck-builder` skill.
 
@@ -22,8 +22,10 @@ Codex Presentations plugin 已经很强，尤其在以下方面：
 
 当前真正的问题不是缺少 PPTX 生成能力，而是两个交互断点：
 
-1. 生成前，用户经常没有一次性给出足够清楚的 audience、goal、source boundary、logo policy、image policy 和 output constraints。
+1. 生成前，用户经常没有一次性给出足够清楚的 audience、goal、research strategy、source boundary、logo policy、image policy 和 output constraints。
 2. 生成后，agent 通常只问“你觉得怎么样”，用户很难用抽象语言描述要换什么视觉方向。
+3. 当用户只给主题并希望 agent 查资料时，资料研究深度、联网成本和外部 Deep Research 资料包使用方式没有被显式确认。
+4. 当用户没有给参考 deck 时，视觉方向经常被推迟到 v1 之后再救火式修改，第一版表现力不足。
 
 因此，增强方向不应该是重新造一个 PPTX renderer，而是做一个 `Presentation Director`，让 Presentations plugin 在更清楚的上下文中工作，并让用户通过点击完成下一轮风格重绘选择。
 
@@ -116,8 +118,10 @@ Recommendation: choose Option C for Codex.
 
 1. 一份 confirmed brief。
 2. 一个生成前 confirmation gate。
-3. 一个基于 first draft contact sheet 的 style review 页面。
-4. 一个 revision request 文件，让 agent 自动读取并调用 Presentations plugin 修改。
+3. 一个 research strategy gate，明确使用 Codex 深度联网、外部 Deep Research 资料包、Hybrid，还是仅用用户资料。
+4. 一个 visual inspiration gate，在 full PPTX 生成前给出 3 个动态视觉候选。
+5. 一个基于 first draft contact sheet 的 style review 页面。
+6. 一个 revision request 文件，让 agent 自动读取并调用 Presentations plugin 修改。
 
 不要先做复杂 schema、账号系统、网页发布或独立 PPTX renderer。
 
@@ -153,6 +157,8 @@ It is a Codex interaction layer around the Presentations plugin:
 ```text
 User source material
   -> click-based intake
+  -> research strategy gate
+  -> visual inspiration gate
   -> brief confirmation gate
   -> Presentations plugin v1 generation
   -> style-review UI
@@ -179,6 +185,8 @@ User says they want to create a PPTX and provides one or more inputs:
 - topic
 - pasted text
 - article URL
+- web page URL
+- Google Drive / Docs / Slides / Sheets URL
 - PDF
 - existing PPTX
 - project folder
@@ -221,8 +229,52 @@ The UI should be mostly click-based:
 - 3-5 common options
 - always include `自定义`
 - optional short free-text field when `自定义` is selected
+- source entry accepts one item per line: local folder, local file, web URL, or Google Drive / Docs / Slides / Sheets URL
 
 The user should not answer ten open-ended questions in chat.
+
+Research strategy is part of intake and should be explicit when the user only gave a topic:
+
+| Option | Use When |
+|--------|----------|
+| Hybrid: External Deep Research + Codex verification | Default for dense research topics such as medicine, policy, industry, finance, or technical trends |
+| Codex deep web research | User wants Codex to find, filter, and verify sources directly despite higher time/token cost |
+| External Deep Research packet | User will provide Gemini Deep Research, Perplexity Deep Research, or another source package |
+| Provided materials only | User wants no web expansion and missing facts should be marked |
+
+### Step 2.5 - Visual Inspiration Gate
+
+After intake, open:
+
+```text
+PPTX/<task-slug>/visual-inspiration.html
+```
+
+This page should dynamically generate 3 visual candidates from the topic, deck type, audience, and source density. The candidates should borrow from existing UI/deck design assets:
+
+- `design-locks/` for palette, typography, and layout constraints
+- `ui-ux-pro-max` for product/style/color/chart/UX reasoning
+- HTML deck and UI-generation projects for 3-option preview selection, tokenized theme catalogs, locked visual systems, image slots, and QA discipline
+
+Each candidate must show:
+
+- best-for / avoid-for
+- palette
+- background strategy
+- typography / title style
+- layout rhythm
+- chart grammar
+- image strategy
+- inspiration source
+- risk
+
+The selected candidate is saved into:
+
+```text
+PPTX/<task-slug>/intake-selection.json
+```
+
+under `visual_direction.selected_candidate`.
 
 ### Step 3 - Brief Confirmation Gate
 
@@ -611,6 +663,9 @@ It should convert all selections into a readable generation brief:
 内容边界:
 <source boundary>
 
+资料研究策略:
+<Codex deep web / external Deep Research packet / hybrid / provided-only>
+
 Logo / 品牌:
 <logo policy>
 
@@ -618,7 +673,7 @@ AI 图片:
 <image policy>
 
 第一版视觉方向:
-<visual freedom / style preference>
+<selected visual candidate: palette, background, layout rhythm, chart grammar, image strategy>
 
 生成策略:
 先生成 v1 PPTX 和 contact sheet，然后打开 style-review.html 供选择是否重绘。
@@ -834,6 +889,8 @@ Possible endpoints:
 |----------|---------|
 | `GET /intake` | show click-based intake |
 | `POST /api/intake` | save intake selections |
+| `GET /visual-inspiration` | show 3 dynamic visual direction candidates |
+| `POST /api/visual-inspiration` | save selected visual direction |
 | `GET /confirm` | show brief confirmation |
 | `POST /api/confirm` | save confirmed brief and signal ready |
 | `GET /style-review` | show v1 contact sheet and revision options |
@@ -872,6 +929,7 @@ PPTX/<task-slug>/
   brief-draft.json
   intake.html
   intake-selection.json
+  visual-inspiration.html
   brief-confirm.html
   brief-confirmed.json
   style-review.html
@@ -936,6 +994,11 @@ Minimal shape:
     "value": "explain project value and implementation path",
     "source": "user-selected"
   },
+  "research_strategy": {
+    "value": "hybrid-deep-research",
+    "source": "user-selected",
+    "meaning": "Use an external Deep Research packet when available, then let Codex verify key facts and sources."
+  },
   "output": {
     "format": "pptx",
     "language": "zh",
@@ -955,7 +1018,15 @@ Minimal shape:
     "allowed": ["abstract-background", "section-art"]
   },
   "visual_direction": {
-    "first_draft": "delegate-to-presentations",
+    "selected_candidate": {
+      "key": "signal-system",
+      "name": "Signal System",
+      "palette": ["#f8fafc", "#111827", "#0061ff", "#16a34a"],
+      "background": "light engineering grid with restrained signal lines",
+      "layout": "architecture diagrams, data flows, metric dashboards",
+      "chart": "latency charts, dependency maps, before/after bars",
+      "image_strategy": "use real screenshots first; beautify but do not redraw facts"
+    },
     "avoid": ["generic SaaS card grid", "fake logos", "unverified metrics"]
   },
   "risks": [
