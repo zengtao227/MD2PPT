@@ -19,7 +19,8 @@ Do not call Codex Presentations directly until the user has confirmed the brief.
 python3 scripts/presentation_director.py init \
   --task "<short task slug>" \
   --topic "<deck topic>" \
-  --source "<resolved source path or URL>"
+  --source "<resolved source path or URL>" \
+  --conversation-text "<recent user prompt or conversation excerpt>"
 
 # 2. Start click-based UI and open the intake page automatically
 python3 scripts/presentation_director.py serve --task "<short task slug>"
@@ -30,6 +31,8 @@ python3 scripts/presentation_director.py wait --task "<short task slug>" --for c
 # 4. Print the Presentations handoff prompt
 python3 scripts/presentation_director.py prompt --task "<short task slug>" --kind initial
 ```
+
+Keep `--ui-language auto` unless the user explicitly asks for a specific Director UI language. The confirmation HTML should communicate in the user's current conversation language; the separate `content_language` field controls the slide copy language.
 
 Do not ask the user to copy/paste a local URL. If the page did not open, run:
 
@@ -53,7 +56,7 @@ After the final version is selected, make sure a share HTML companion exists:
 python3 scripts/presentation_director.py share-html --task "<short task slug>" --version "<selected version>"
 ```
 
-Skip Template A0 only when the user explicitly says to skip intake/director, when a valid `brief-confirmed.json` already exists, or when the task is a targeted edit / QA pass on an existing deck.
+Skip Template A0 only when the user explicitly says to skip intake/director, when a valid user-confirmed `brief-confirmed.json` already exists, or when the task is a targeted edit / QA pass on an existing deck. In an interactive Codex session, do not create `brief-confirmed.json` or `confirmed.ready` on the user's behalf; open the confirmation page and wait for the user to click confirm.
 
 ---
 
@@ -90,7 +93,7 @@ Do NOT use pptxgenjs, Marp, or Google Slides as the primary generation path.
 
 [Design Requirements]
 - If the user selected a design lock, apply it as a hard constraint. Otherwise, let Presentations own the design system.
-- Audience, goal, source boundary, logo policy, image policy, and output constraints are locked by the confirmed brief.
+- Audience, goal, source boundary, content language, logo policy, image policy, and output constraints are locked by the confirmed brief.
 - Composition, layout rhythm, chart treatment, typography hierarchy, and visual expression are delegated to Presentations.
 - Build a design system: background, fonts, palette, chart grammar, page numbers, footnotes, kicker, layout families
 - Do not use the same major layout on 3 or more consecutive slides

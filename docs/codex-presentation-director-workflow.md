@@ -1,6 +1,6 @@
 # Codex Presentation Director Workflow
 
-> Status: implemented prototype for Codex + Presentations plugin only.
+> Status: implemented prototype for Codex + Presentations plugin, with Claude/offline parity rules for intake and confirmation.
 >
 > Goal: improve the real PPTX creation experience in Codex by adding a low-friction intake layer, a research strategy gate, a visual inspiration gate before generation, and a visual revision layer after the first draft, while leaving high-quality PPTX rendering to the Codex Presentations plugin.
 >
@@ -22,7 +22,7 @@ Codex Presentations plugin 已经很强，尤其在以下方面：
 
 当前真正的问题不是缺少 PPTX 生成能力，而是两个交互断点：
 
-1. 生成前，用户经常没有一次性给出足够清楚的 audience、goal、research strategy、source boundary、logo policy、image policy 和 output constraints。
+1. 生成前，用户经常没有一次性给出足够清楚的 audience、goal、research strategy、source boundary、content language、UI communication language、logo policy、image policy 和 output constraints。
 2. 生成后，agent 通常只问“你觉得怎么样”，用户很难用抽象语言描述要换什么视觉方向。
 3. 当用户只给主题并希望 agent 查资料时，资料研究深度、联网成本和外部 Deep Research 资料包使用方式没有被显式确认。
 4. 当用户没有给参考 deck 时，视觉方向经常被推迟到 v1 之后再救火式修改，第一版表现力不足。
@@ -54,6 +54,8 @@ Hard constraints:
 
 - Codex 环境下，PPTX 生成仍然交给 Presentations plugin。
 - 生成前必须有用户确认的 brief，不能仅凭模糊请求直接生成。
+- 交互式 Codex 会话必须打开确认页并等待用户点击确认；agent 不得后台 POST `/api/confirm` 或写入确认状态来替代用户确认。
+- Claude Code / offline fallback 也必须使用同一套内容语言、页数/时长和生成前确认原则；可用 Presentation Director 时先跑 guard，不可用时做等价 chat/static confirmation。
 - 用户不应被要求 copy/paste JSON 或命令。
 - Logo、学校标志、企业标志、产品 UI、客户 logo 必须有来源或由用户提供，不能伪造。
 - AI 生图必须由用户授权，且不能伪造真实人物、真实产品、真实品牌资产。
@@ -304,6 +306,8 @@ Buttons:
 
 Only after the user clicks `确认并开始生成` should the agent call the Presentations plugin.
 
+In an interactive Codex session, the agent must not call `POST /api/confirm`, write `brief-confirmed.json`, or touch `confirmed.ready` on behalf of the user unless the user explicitly says to skip confirmation or generate directly.
+
 Output:
 
 ```text
@@ -321,12 +325,13 @@ The agent calls Presentations plugin with:
 - asset policy
 - logo policy
 - imagegen policy
+- content language
 - output constraints
 
 Important instruction to Presentations:
 
 ```text
-Content, audience, source boundaries, logo policy, image policy, and output constraints are locked.
+Content, audience, source boundaries, content language, logo policy, image policy, and output constraints are locked.
 Composition, contact-sheet rhythm, hierarchy, chart treatment, and visual expression are delegated to Presentations.
 Do not treat design-locks as mandatory unless the user selected one explicitly.
 ```
@@ -534,23 +539,41 @@ Options:
 4. 以参考 deck 作为质量和风格标杆
 5. 自定义
 
-### Question 5 - Output Constraints
+### Question 5 - Content Language
 
 Prompt:
 
 ```text
-输出限制是什么?
+PPT 正文使用什么语言?
 ```
 
 Options:
 
-1. 中文，10-12 页，适合 10-15 分钟演讲
-2. 中文，15-20 页，适合详细汇报
-3. 英文，10-12 页
-4. 中英双语，页数由内容决定
-5. 自定义
+1. 中文
+2. English
+3. Deutsch
+4. Français
+5. Italiano
+6. Español
+7. 双语
+8. 自定义
 
-### Question 6 - Logo and Brand Assets
+### Question 6 - Output Constraints
+
+Prompt:
+
+```text
+页数和演讲时长限制是什么?
+```
+
+Options:
+
+1. 8-10 页
+2. 10-12 页
+3. 15-20 页
+4. 自定义时长和页数
+
+### Question 7 - Logo and Brand Assets
 
 Prompt:
 
@@ -870,7 +893,7 @@ scripts/presentation_director.py
 Possible commands:
 
 ```bash
-python3 scripts/presentation_director.py init --task "<task-slug>" --source "<path-or-url>"
+python3 scripts/presentation_director.py init --task "<task-slug>" --source "<path-or-url>" --conversation-text "<recent user prompt>"
 python3 scripts/presentation_director.py serve --task "<task-slug>"
 python3 scripts/presentation_director.py open-page --task "<task-slug>" --page confirm
 python3 scripts/presentation_director.py render --task "<task-slug>" --open-page style-review
@@ -883,6 +906,8 @@ python3 scripts/presentation_director.py prompt --task "<task-slug>" --kind revi
 python3 scripts/presentation_director.py share-html --task "<task-slug>" --version "<selected-version>"
 ```
 
+`ui_language` controls the Director confirmation-page communication language and defaults to auto-detection from `--conversation-text`; `content_language` remains the generated deck's body-copy language.
+
 Possible endpoints:
 
 | Endpoint | Purpose |
@@ -892,7 +917,7 @@ Possible endpoints:
 | `GET /visual-inspiration` | show 3 dynamic visual direction candidates |
 | `POST /api/visual-inspiration` | save selected visual direction |
 | `GET /confirm` | show brief confirmation |
-| `POST /api/confirm` | save confirmed brief and signal ready |
+| `POST /api/confirm` | save confirmed brief and signal ready only when the confirmation form token is submitted |
 | `GET /style-review` | show v1 contact sheet and revision options |
 | `POST /api/revision` | save revision request and signal ready |
 | `GET /compare` | show version comparison |
@@ -1075,7 +1100,7 @@ Source material:
 <resolved paths and links>
 
 Rules:
-- Audience, goal, source boundary, logo policy, image policy, and output constraints are locked.
+- Audience, goal, source boundary, content language, logo policy, image policy, and output constraints are locked.
 - Do not fabricate metrics, logos, customer names, or screenshots.
 - Use official or user-provided brand assets only.
 - AI images are allowed only according to the confirmed image policy.
@@ -1179,7 +1204,7 @@ Work:
 
 - Implement `scripts/presentation_director.py`.
 - Add local server endpoints.
-- Write `brief-confirmed.json` and status files automatically.
+- Write `brief-confirmed.json` and status files only after the user submits the confirmation form.
 
 Done when:
 
@@ -1196,6 +1221,23 @@ Work:
 Done when:
 
 - User can select visual revisions and final version by clicking.
+
+## Claude / Offline Parity
+
+Claude Code and other local/offline agents use different renderers, but they must not bypass the upstream decision gates for net-new PPTX work.
+
+Required parity:
+
+- Use the same separate fields: `content_language` and `output_constraints`.
+- Confirm audience, goal, source boundary, research strategy, visual direction, language, and page/time range before generation.
+- If Presentation Director exists in the workspace, run `presentation_director.py guard --task "<task-slug>"` before pptxgenjs or HTML generation.
+- If the Director helper is unavailable, present the equivalent plan in chat or static HTML and stop until the user explicitly confirms.
+- Do not treat a generic "continue" after source upload as confirmation of language, page count, structure, and visual direction unless the user explicitly says to skip the gate or generate directly.
+
+Hook adapters:
+
+- `scripts/hooks/presentation-director-guard.sh` validates an existing task before generation.
+- `scripts/hooks/claude-presentation-director-prompt.py` can be registered as a Claude `UserPromptSubmit` hook to inject this workflow when a PPT/deck prompt is detected.
 
 ### Phase 5 - Real Deck Trials
 

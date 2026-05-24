@@ -13,11 +13,13 @@ from __future__ import annotations
 
 import argparse
 import base64
+import hashlib
 import html
 import json
 import mimetypes
 import os
 import re
+import secrets
 import shutil
 import sys
 import time
@@ -47,6 +49,454 @@ PAGE_PATHS: dict[str, str] = {
     "confirm": "/confirm",
     "style-review": "/style-review",
     "compare": "/compare",
+}
+SUPPORTED_UI_LANGUAGES: set[str] = {"zh", "en", "de", "fr", "it", "es"}
+HTML_LANG: dict[str, str] = {
+    "zh": "zh-CN",
+    "en": "en",
+    "de": "de",
+    "fr": "fr",
+    "it": "it",
+    "es": "es",
+}
+UI_COPY: dict[str, dict[str, str]] = {
+    "zh": {
+        "brief_gate": "Brief Confirmation Gate",
+        "confirm_title": "确认生成简报",
+        "confirm_intro": "请最后确认一次。只有点击“确认并开始生成”后，agent 才应调用 Codex Presentations plugin。",
+        "topic": "主题",
+        "sources": "资料来源",
+        "summary": "选择汇总",
+        "item": "项目",
+        "selection": "选择",
+        "source": "来源",
+        "visual_direction": "选定视觉方向",
+        "background": "背景策略",
+        "layout": "版式节奏",
+        "chart": "图表语法",
+        "image_strategy": "图片策略",
+        "risk": "风险",
+        "pre_generation_risks": "生成前风险",
+        "generation_strategy": "生成策略",
+        "generation_strategy_text": "先生成 v1 PPTX 和 contact sheet，并集中保存到 {task_dir}，然后打开 style-review.html 供选择是否重绘。",
+        "back_visual": "返回修改视觉方向",
+        "confirm_button": "确认并开始生成",
+        "no_risks": "未发现明显风险。",
+        "no_sources": "未记录资料来源。可以在下面粘贴本地路径、网页 URL 或 Google Drive 地址。",
+        "confirmed_title": "Brief confirmed",
+        "confirmed_message": "可以回到 Codex，agent 会检测 confirmed.ready 并开始生成。",
+        "invalid_token": "Missing or invalid confirmation token. Open the confirmation page and submit the form.",
+        "default": "default",
+        "user_selected": "user-selected",
+        "unknown": "unknown",
+    },
+    "en": {
+        "brief_gate": "Brief Confirmation Gate",
+        "confirm_title": "Confirm Generation Brief",
+        "confirm_intro": "Please review the plan one last time. The agent should call the Codex Presentations plugin only after you click \"Confirm and start generation.\"",
+        "topic": "Topic",
+        "sources": "Source Material",
+        "summary": "Selection Summary",
+        "item": "Item",
+        "selection": "Selection",
+        "source": "Source",
+        "visual_direction": "Selected Visual Direction",
+        "background": "Background Strategy",
+        "layout": "Layout Rhythm",
+        "chart": "Chart Grammar",
+        "image_strategy": "Image Strategy",
+        "risk": "Risk",
+        "pre_generation_risks": "Pre-Generation Risks",
+        "generation_strategy": "Generation Strategy",
+        "generation_strategy_text": "Generate the v1 PPTX and contact sheet first, save them under {task_dir}, then open style-review.html so you can decide whether to redraw the deck.",
+        "back_visual": "Back to visual direction",
+        "confirm_button": "Confirm and start generation",
+        "no_risks": "No obvious risks detected.",
+        "no_sources": "No source material has been recorded. Add local paths, web URLs, or Google Drive links before generation.",
+        "confirmed_title": "Brief confirmed",
+        "confirmed_message": "Return to Codex. The agent will detect confirmed.ready and start generation.",
+        "invalid_token": "Missing or invalid confirmation token. Open the confirmation page and submit the form.",
+        "default": "default",
+        "user_selected": "user-selected",
+        "unknown": "unknown",
+    },
+    "de": {
+        "brief_gate": "Bestätigung des Briefings",
+        "confirm_title": "Generierungsbrief bestätigen",
+        "confirm_intro": "Bitte prüfen Sie den Plan ein letztes Mal. Erst nach dem Klick auf \"Bestätigen und Generierung starten\" sollte der Agent das Codex Presentations plugin aufrufen.",
+        "topic": "Thema",
+        "sources": "Quellenmaterial",
+        "summary": "Zusammenfassung der Auswahl",
+        "item": "Punkt",
+        "selection": "Auswahl",
+        "source": "Quelle",
+        "visual_direction": "Ausgewählte visuelle Richtung",
+        "background": "Hintergrundstrategie",
+        "layout": "Layoutrhythmus",
+        "chart": "Diagrammregeln",
+        "image_strategy": "Bildstrategie",
+        "risk": "Risiko",
+        "pre_generation_risks": "Risiken vor der Generierung",
+        "generation_strategy": "Generierungsstrategie",
+        "generation_strategy_text": "Zuerst werden v1-PPTX und Contact Sheet erzeugt und unter {task_dir} gespeichert. Danach wird style-review.html geöffnet, damit Sie entscheiden können, ob das Deck visuell überarbeitet werden soll.",
+        "back_visual": "Zur visuellen Richtung zurück",
+        "confirm_button": "Bestätigen und Generierung starten",
+        "no_risks": "Keine offensichtlichen Risiken erkannt.",
+        "no_sources": "Es wurden keine Quellen erfasst. Fügen Sie vor der Generierung lokale Pfade, Web-URLs oder Google-Drive-Links hinzu.",
+        "confirmed_title": "Briefing bestätigt",
+        "confirmed_message": "Kehren Sie zu Codex zurück. Der Agent erkennt confirmed.ready und startet die Generierung.",
+        "invalid_token": "Fehlendes oder ungültiges Bestätigungstoken. Öffnen Sie die Bestätigungsseite und senden Sie das Formular ab.",
+        "default": "Standard",
+        "user_selected": "vom Benutzer gewählt",
+        "unknown": "unbekannt",
+    },
+    "fr": {
+        "brief_gate": "Validation du brief",
+        "confirm_title": "Confirmer le brief de génération",
+        "confirm_intro": "Veuillez relire le plan une dernière fois. L'agent ne doit appeler Codex Presentations qu'après votre clic sur \"Confirmer et lancer la génération\".",
+        "topic": "Sujet",
+        "sources": "Sources",
+        "summary": "Résumé des choix",
+        "item": "Élément",
+        "selection": "Choix",
+        "source": "Source",
+        "visual_direction": "Direction visuelle sélectionnée",
+        "background": "Stratégie de fond",
+        "layout": "Rythme de mise en page",
+        "chart": "Grammaire des graphiques",
+        "image_strategy": "Stratégie d'image",
+        "risk": "Risque",
+        "pre_generation_risks": "Risques avant génération",
+        "generation_strategy": "Stratégie de génération",
+        "generation_strategy_text": "Générer d'abord le PPTX v1 et la planche de contact, les enregistrer dans {task_dir}, puis ouvrir style-review.html pour décider d'une éventuelle refonte visuelle.",
+        "back_visual": "Retour à la direction visuelle",
+        "confirm_button": "Confirmer et lancer la génération",
+        "no_risks": "Aucun risque évident détecté.",
+        "no_sources": "Aucune source n'a été enregistrée. Ajoutez des chemins locaux, des URL web ou des liens Google Drive avant la génération.",
+        "confirmed_title": "Brief confirmé",
+        "confirmed_message": "Retournez dans Codex. L'agent détectera confirmed.ready et lancera la génération.",
+        "invalid_token": "Jeton de confirmation manquant ou invalide. Ouvrez la page de confirmation et envoyez le formulaire.",
+        "default": "par défaut",
+        "user_selected": "choisi par l'utilisateur",
+        "unknown": "inconnu",
+    },
+    "it": {
+        "brief_gate": "Conferma del brief",
+        "confirm_title": "Conferma il brief di generazione",
+        "confirm_intro": "Rivedi il piano un'ultima volta. L'agente dovrebbe chiamare Codex Presentations solo dopo il clic su \"Conferma e avvia la generazione\".",
+        "topic": "Argomento",
+        "sources": "Fonti",
+        "summary": "Riepilogo delle scelte",
+        "item": "Voce",
+        "selection": "Scelta",
+        "source": "Fonte",
+        "visual_direction": "Direzione visiva selezionata",
+        "background": "Strategia di sfondo",
+        "layout": "Ritmo del layout",
+        "chart": "Grammatica dei grafici",
+        "image_strategy": "Strategia immagini",
+        "risk": "Rischio",
+        "pre_generation_risks": "Rischi prima della generazione",
+        "generation_strategy": "Strategia di generazione",
+        "generation_strategy_text": "Genera prima il PPTX v1 e il contact sheet, salvali in {task_dir}, poi apri style-review.html per decidere se ridisegnare il deck.",
+        "back_visual": "Torna alla direzione visiva",
+        "confirm_button": "Conferma e avvia la generazione",
+        "no_risks": "Nessun rischio evidente rilevato.",
+        "no_sources": "Nessuna fonte registrata. Aggiungi percorsi locali, URL web o link Google Drive prima della generazione.",
+        "confirmed_title": "Brief confermato",
+        "confirmed_message": "Torna a Codex. L'agente rileverà confirmed.ready e avvierà la generazione.",
+        "invalid_token": "Token di conferma mancante o non valido. Apri la pagina di conferma e invia il modulo.",
+        "default": "predefinito",
+        "user_selected": "scelto dall'utente",
+        "unknown": "sconosciuto",
+    },
+    "es": {
+        "brief_gate": "Confirmación del brief",
+        "confirm_title": "Confirmar el brief de generación",
+        "confirm_intro": "Revisa el plan una última vez. El agente solo debe llamar a Codex Presentations después de que hagas clic en \"Confirmar e iniciar generación\".",
+        "topic": "Tema",
+        "sources": "Fuentes",
+        "summary": "Resumen de selecciones",
+        "item": "Elemento",
+        "selection": "Selección",
+        "source": "Fuente",
+        "visual_direction": "Dirección visual seleccionada",
+        "background": "Estrategia de fondo",
+        "layout": "Ritmo de diseño",
+        "chart": "Gramática de gráficos",
+        "image_strategy": "Estrategia de imágenes",
+        "risk": "Riesgo",
+        "pre_generation_risks": "Riesgos antes de generar",
+        "generation_strategy": "Estrategia de generación",
+        "generation_strategy_text": "Primero genera el PPTX v1 y la hoja de contacto, guárdalos en {task_dir}, y luego abre style-review.html para decidir si redibujar el deck.",
+        "back_visual": "Volver a dirección visual",
+        "confirm_button": "Confirmar e iniciar generación",
+        "no_risks": "No se detectaron riesgos evidentes.",
+        "no_sources": "No se registraron fuentes. Añade rutas locales, URL web o enlaces de Google Drive antes de generar.",
+        "confirmed_title": "Brief confirmado",
+        "confirmed_message": "Vuelve a Codex. El agente detectará confirmed.ready e iniciará la generación.",
+        "invalid_token": "Token de confirmación ausente o no válido. Abre la página de confirmación y envía el formulario.",
+        "default": "predeterminado",
+        "user_selected": "seleccionado por el usuario",
+        "unknown": "desconocido",
+    },
+}
+QUESTION_TITLE_L10N: dict[str, dict[str, str]] = {
+    "en": {
+        "deck_type": "PPT Type",
+        "research_strategy": "Research Strategy",
+        "audience": "Audience",
+        "goal": "Goal",
+        "source_boundary": "Source Boundary",
+        "content_language": "Content Language",
+        "output_constraints": "Output Constraints",
+        "logo_policy": "Logo / Brand Assets",
+        "image_policy": "AI Image Policy",
+        "visual_freedom": "First-Draft Visual Direction",
+        "reference_deck": "Reference Deck",
+    },
+    "de": {
+        "deck_type": "PPT-Typ",
+        "research_strategy": "Recherche-Strategie",
+        "audience": "Zielgruppe",
+        "goal": "Ziel",
+        "source_boundary": "Quellengrenzen",
+        "content_language": "Inhaltssprache",
+        "output_constraints": "Umfang und Dauer",
+        "logo_policy": "Logo / Markenmaterial",
+        "image_policy": "KI-Bildrichtlinie",
+        "visual_freedom": "Visuelle Richtung des ersten Entwurfs",
+        "reference_deck": "Referenzdeck",
+    },
+    "fr": {
+        "deck_type": "Type de PPT",
+        "research_strategy": "Stratégie de recherche",
+        "audience": "Public",
+        "goal": "Objectif",
+        "source_boundary": "Limites des sources",
+        "content_language": "Langue du contenu",
+        "output_constraints": "Contraintes de sortie",
+        "logo_policy": "Logo / actifs de marque",
+        "image_policy": "Politique d'images IA",
+        "visual_freedom": "Direction visuelle du premier jet",
+        "reference_deck": "Deck de référence",
+    },
+    "it": {
+        "deck_type": "Tipo di PPT",
+        "research_strategy": "Strategia di ricerca",
+        "audience": "Pubblico",
+        "goal": "Obiettivo",
+        "source_boundary": "Limiti delle fonti",
+        "content_language": "Lingua dei contenuti",
+        "output_constraints": "Vincoli di output",
+        "logo_policy": "Logo / asset del brand",
+        "image_policy": "Policy immagini IA",
+        "visual_freedom": "Direzione visiva della prima bozza",
+        "reference_deck": "Deck di riferimento",
+    },
+    "es": {
+        "deck_type": "Tipo de PPT",
+        "research_strategy": "Estrategia de investigación",
+        "audience": "Audiencia",
+        "goal": "Objetivo",
+        "source_boundary": "Límites de fuentes",
+        "content_language": "Idioma del contenido",
+        "output_constraints": "Restricciones de salida",
+        "logo_policy": "Logo / activos de marca",
+        "image_policy": "Política de imágenes IA",
+        "visual_freedom": "Dirección visual del primer borrador",
+        "reference_deck": "Deck de referencia",
+    },
+}
+CHOICE_LABEL_L10N: dict[str, dict[str, dict[str, str]]] = {
+    "en": {
+        "deck_type": {
+            "project-report": "Project update",
+            "engineering-platform": "Engineering / technical solution",
+            "investor-pitch": "Investor / pitch deck",
+            "knowledge-teaching": "Academic / course / knowledge explanation",
+            "sales-product": "Sales / product presentation",
+            "custom": "Custom",
+        },
+        "research_strategy": {
+            "hybrid-deep-research": "Hybrid: external Deep Research + Codex verification",
+            "codex-web-deep": "Codex deep web research",
+            "external-deep-research": "Gemini / Perplexity Deep Research packet",
+            "provided-materials": "Use only the materials I provide",
+            "custom": "Custom",
+        },
+        "audience": {
+            "executives": "Executives / decision-makers",
+            "investors-reviewers": "Investors / reviewers / pitch audience",
+            "technical-leaders": "Technical team / engineering reviewers",
+            "customers-sales": "Customers / sales audience",
+            "teachers-researchers": "Students / teachers / researchers",
+            "custom": "Custom",
+        },
+        "goal": {
+            "understand-topic": "Help the audience understand a topic quickly",
+            "decision": "Persuade the audience to make a decision",
+            "progress-risk": "Report progress, results, and risks",
+            "teaching": "Teach / explain knowledge",
+            "explain-value": "Show product / project value",
+            "custom": "Custom",
+        },
+        "source_boundary": {
+            "provided-only": "Strictly use my provided materials",
+            "web-with-sources": "May supplement from the web with cited sources",
+            "existing-doc": "Use an existing PPT / document as the content base",
+            "reference-quality": "Use a reference deck as the quality and style bar",
+            "custom": "Custom",
+        },
+        "content_language": {
+            "zh": "Chinese",
+            "en": "English",
+            "de": "German",
+            "fr": "French",
+            "it": "Italian",
+            "es": "Spanish",
+            "bilingual": "Bilingual",
+            "custom": "Custom",
+        },
+        "output_constraints": {
+            "pages-8-10": "8-10 slides",
+            "pages-10-12": "10-12 slides",
+            "pages-15-20": "15-20 slides",
+            "custom": "Custom duration and slide count",
+        },
+        "logo_policy": {
+            "none": "Do not use logos",
+            "provided-only": "Only use logos / images I provide",
+            "official-sources": "May find official logos and assets",
+            "cover-final-only": "Use logos only on cover and final slides",
+            "custom": "Custom",
+        },
+        "image_policy": {
+            "none": "Do not use AI-generated images",
+            "abstract-only": "Allow abstract backgrounds / concept images only",
+            "cover-section": "Allow cover and section images",
+            "ask-before-use": "Ask me before each generated image",
+            "custom": "Custom",
+        },
+        "visual_freedom": {
+            "delegate": "Let Presentations choose freely",
+            "restrained": "More formal and restrained",
+            "technical": "More technical / engineering-oriented",
+            "investor": "More investor-pitch / high-contrast",
+            "academic-editorial": "More academic / editorial",
+            "custom": "Custom",
+        },
+        "reference_deck": {
+            "none": "No reference; generate from content",
+            "quality-only": "Reference exists, but only as a quality bar",
+            "visual-style": "Reference exists; get close to its visual style",
+            "existing-ppt": "Existing PPT needs to be revised",
+            "custom": "Custom",
+        },
+    },
+    "de": {
+        "deck_type": {
+            "project-report": "Projektbericht",
+            "engineering-platform": "Technische Lösung / Architektur",
+            "investor-pitch": "Investor- / Pitch-Deck",
+            "knowledge-teaching": "Akademische / Kurs- / Wissensvermittlung",
+            "sales-product": "Vertrieb / Produktpräsentation",
+            "custom": "Benutzerdefiniert",
+        },
+        "research_strategy": {
+            "hybrid-deep-research": "Hybrid: externe Deep Research + Codex-Prüfung",
+            "codex-web-deep": "Codex Deep-Web-Recherche",
+            "external-deep-research": "Gemini / Perplexity Deep-Research-Paket",
+            "provided-materials": "Nur bereitgestellte Materialien verwenden",
+            "custom": "Benutzerdefiniert",
+        },
+        "audience": {
+            "executives": "Führungskräfte / Entscheider",
+            "investors-reviewers": "Investoren / Gutachter / Pitch-Publikum",
+            "technical-leaders": "Technisches Team / Engineering Review",
+            "customers-sales": "Kunden / Vertriebspublikum",
+            "teachers-researchers": "Studierende / Lehrende / Forschende",
+            "custom": "Benutzerdefiniert",
+        },
+        "goal": {
+            "understand-topic": "Ein Thema schnell verständlich machen",
+            "decision": "Zu einer Entscheidung überzeugen",
+            "progress-risk": "Fortschritt, Ergebnisse und Risiken berichten",
+            "teaching": "Lehren / Wissen vermitteln",
+            "explain-value": "Produkt- / Projektwert zeigen",
+            "custom": "Benutzerdefiniert",
+        },
+        "source_boundary": {
+            "provided-only": "Ausschließlich bereitgestellte Materialien verwenden",
+            "web-with-sources": "Web-Ergänzungen mit Quellenangaben erlaubt",
+            "existing-doc": "Bestehendes PPT / Dokument als Inhaltsbasis nutzen",
+            "reference-quality": "Referenzdeck als Qualitäts- und Stilmaßstab nutzen",
+            "custom": "Benutzerdefiniert",
+        },
+        "content_language": {
+            "zh": "Chinesisch",
+            "en": "Englisch",
+            "de": "Deutsch",
+            "fr": "Französisch",
+            "it": "Italienisch",
+            "es": "Spanisch",
+            "bilingual": "Zweisprachig",
+            "custom": "Benutzerdefiniert",
+        },
+        "output_constraints": {
+            "pages-8-10": "8-10 Folien",
+            "pages-10-12": "10-12 Folien",
+            "pages-15-20": "15-20 Folien",
+            "custom": "Benutzerdefinierte Dauer und Folienzahl",
+        },
+        "logo_policy": {
+            "none": "Keine Logos verwenden",
+            "provided-only": "Nur bereitgestellte Logos / Bilder verwenden",
+            "official-sources": "Offizielle Logos und Assets dürfen gesucht werden",
+            "cover-final-only": "Logos nur auf Titelfolie und Schlussfolie",
+            "custom": "Benutzerdefiniert",
+        },
+        "image_policy": {
+            "none": "Keine KI-generierten Bilder verwenden",
+            "abstract-only": "Nur abstrakte Hintergründe / Konzeptbilder erlauben",
+            "cover-section": "Titel- und Kapitelbilder erlauben",
+            "ask-before-use": "Vor jedem generierten Bild fragen",
+            "custom": "Benutzerdefiniert",
+        },
+        "visual_freedom": {
+            "delegate": "Presentations frei gestalten lassen",
+            "restrained": "Formeller und zurückhaltender",
+            "technical": "Technischer / stärker engineering-orientiert",
+            "investor": "Mehr Investor-Pitch / hoher Kontrast",
+            "academic-editorial": "Akademischer / editorialer",
+            "custom": "Benutzerdefiniert",
+        },
+        "reference_deck": {
+            "none": "Keine Referenz; aus dem Inhalt generieren",
+            "quality-only": "Referenz vorhanden, nur als Qualitätsmaßstab",
+            "visual-style": "Referenz vorhanden; visuellen Stil annähern",
+            "existing-ppt": "Bestehendes PPT soll überarbeitet werden",
+            "custom": "Benutzerdefiniert",
+        },
+    },
+}
+GENERIC_VISUAL_FIELD_L10N: dict[str, dict[str, str]] = {
+    "en": {
+        "summary": "Selected visual direction based on the topic, audience, and deck type.",
+        "background": "Use a coherent background system that matches the selected palette.",
+        "layout": "Use slide layouts that fit the proof objects and presentation rhythm.",
+        "chart": "Use clear evidence-led charts with direct labels.",
+        "image_strategy": "Use verified source material; use AI imagery only when authorized.",
+        "risk": "Keep source labels, evidence strength, and layout QA visible.",
+    },
+    "de": {
+        "summary": "Ausgewählte visuelle Richtung auf Basis von Thema, Zielgruppe und Deck-Typ.",
+        "background": "Ein konsistentes Hintergrundsystem verwenden, das zur gewählten Farbpalette passt.",
+        "layout": "Folienlayouts an Beweisobjekte und Präsentationsrhythmus anpassen.",
+        "chart": "Klare, evidenzorientierte Diagramme mit direkten Beschriftungen verwenden.",
+        "image_strategy": "Geprüftes Quellenmaterial verwenden; KI-Bilder nur mit Freigabe einsetzen.",
+        "risk": "Quellenhinweise, Evidenzstärke und Layout-QA sichtbar halten.",
+    },
 }
 
 
@@ -153,16 +603,31 @@ INTAKE_QUESTIONS: tuple[Question, ...] = (
         ),
     ),
     Question(
+        key="content_language",
+        title="内容语言",
+        prompt="PPT 正文使用什么语言?",
+        default="zh",
+        choices=(
+            Choice("zh", "中文", "使用中文正文和中文标题。"),
+            Choice("en", "English", "Use English slide copy and titles."),
+            Choice("de", "Deutsch", "Deutsche Folientexte und Titel verwenden."),
+            Choice("fr", "Français", "Utiliser le français pour les titres et le contenu."),
+            Choice("it", "Italiano", "Usa l'italiano per titoli e contenuti."),
+            Choice("es", "Español", "Usar español en títulos y contenido."),
+            Choice("bilingual", "双语", "适合跨语言材料；具体语言可在说明中写明。"),
+            Choice("custom", "自定义", "我有自己的语言要求。"),
+        ),
+    ),
+    Question(
         key="output_constraints",
         title="输出限制",
-        prompt="输出限制是什么?",
-        default="zh-10-12",
+        prompt="页数和演讲时长限制是什么?",
+        default="pages-10-12",
         choices=(
-            Choice("zh-10-12", "中文，10-12 页，适合 10-15 分钟演讲", "默认推荐。"),
-            Choice("zh-15-20", "中文，15-20 页，适合详细汇报", "适合内部评审或长汇报。"),
-            Choice("en-10-12", "英文，10-12 页", "适合英文演示。"),
-            Choice("bilingual-flex", "中英双语，页数由内容决定", "适合跨语言材料。"),
-            Choice("custom", "自定义", "我有自己的页数、语言或格式要求。"),
+            Choice("pages-8-10", "8-10 页", "适合短讲、快速方案或 pitch 初稿。"),
+            Choice("pages-10-12", "10-12 页", "默认推荐，适合 10-15 分钟演讲。"),
+            Choice("pages-15-20", "15-20 页", "适合详细汇报、内部评审或长材料。"),
+            Choice("custom", "自定义时长和页数", "我有自己的页数、时长或结构限制。"),
         ),
     ),
     Question(
@@ -338,6 +803,109 @@ def write_text(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def detect_ui_language(text: str) -> str:
+    lowered: str = text.lower()
+    if re.search(r"[\u4e00-\u9fff]", text):
+        return "zh"
+    language_markers: dict[str, tuple[str, ...]] = {
+        "de": (" der ", " die ", " das ", " und ", " mit ", " für ", "über", " bitte ", " erstellen ", "präsentation"),
+        "fr": (" le ", " la ", " les ", " des ", " avec ", " pour ", "présentation", "diapositive", "veuillez"),
+        "it": (" il ", " la ", " gli ", " con ", " per ", "presentazione", "diapositiva", "crea"),
+        "es": (" el ", " la ", " los ", " con ", " para ", "presentación", "diapositiva", "crear"),
+        "en": (" the ", " and ", " with ", " for ", "please ", "create ", "presentation", "slides", "deck"),
+    }
+    padded: str = f" {lowered} "
+    if re.search(r"[äöüß]", lowered):
+        return "de"
+    if re.search(r"[àâçéèêëîïôûùüÿœ]", lowered):
+        return "fr"
+    if re.search(r"[áéíóúñ¿¡]", lowered):
+        return "es"
+    scores: dict[str, int] = {
+        lang: sum(1 for marker in markers if marker in padded)
+        for lang, markers in language_markers.items()
+    }
+    best_lang: str = max(scores, key=scores.get)
+    return best_lang if scores[best_lang] > 0 else "zh"
+
+
+def resolve_ui_language(requested: str, conversation_text: str, fallback_text: str) -> str:
+    if requested in SUPPORTED_UI_LANGUAGES:
+        return requested
+    detected: str = detect_ui_language(conversation_text.strip() or fallback_text)
+    return detected if detected in SUPPORTED_UI_LANGUAGES else "zh"
+
+
+def ui_language_from_brief(brief: JsonDict) -> str:
+    language: str = str(brief.get("ui_language", "")).strip()
+    if language in SUPPORTED_UI_LANGUAGES:
+        return language
+    fallback_text: str = f"{brief.get('conversation_text', '')} {brief.get('topic', '')}"
+    return detect_ui_language(fallback_text)
+
+
+def ui_language_for_task(task_dir: Path) -> str:
+    selected: JsonDict = read_json(task_dir / "intake-selection.json")
+    if selected:
+        return ui_language_from_brief(selected)
+    return ui_language_from_brief(read_json(task_dir / "brief-draft.json"))
+
+
+def t(ui_language: str, key: str) -> str:
+    return UI_COPY.get(ui_language, UI_COPY["zh"]).get(key, UI_COPY["zh"].get(key, key))
+
+
+def localized_question_title(question: Question, ui_language: str) -> str:
+    return QUESTION_TITLE_L10N.get(ui_language, {}).get(question.key, question.title)
+
+
+def localized_choice_label(question: Question, item: JsonDict, ui_language: str) -> str:
+    value: str = str(item.get("value", ""))
+    if "custom" in item:
+        return str(item.get("custom", item.get("label", "")))
+    return CHOICE_LABEL_L10N.get(ui_language, {}).get(question.key, {}).get(
+        value,
+        str(item.get("label", "")),
+    )
+
+
+def localized_source(source_name: str, ui_language: str) -> str:
+    if source_name == "default":
+        return t(ui_language, "default")
+    if source_name == "user-selected":
+        return t(ui_language, "user_selected")
+    if not source_name:
+        return t(ui_language, "unknown")
+    return source_name
+
+
+def localized_risk(risk: str, ui_language: str) -> str:
+    if ui_language == "zh":
+        return risk
+    risk_map: dict[str, dict[str, str]] = {
+        "未发现明确 logo 文件；如需使用 logo，必须由用户提供或使用官方来源。": {
+            "en": "No explicit logo file was found; if logos are needed, they must be provided by the user or sourced officially.",
+            "de": "Keine eindeutige Logo-Datei gefunden; falls Logos benötigt werden, müssen sie vom Benutzer bereitgestellt oder aus offiziellen Quellen bezogen werden.",
+        },
+        "未发现明确量化数据文件；第一版可能需要用定性证明或标注缺失指标。": {
+            "en": "No explicit quantitative data file was found; v1 may need qualitative evidence or clear missing-metric labels.",
+            "de": "Keine eindeutige quantitative Datendatei gefunden; v1 benötigt eventuell qualitative Evidenz oder klare Hinweise auf fehlende Kennzahlen.",
+        },
+        "未提供具体资料路径；需要在生成前补充 source material。": {
+            "en": "No concrete source path was provided; source material should be added before generation.",
+            "de": "Es wurde kein konkreter Quellenpfad angegeben; Quellenmaterial sollte vor der Generierung ergänzt werden.",
+        },
+    }
+    return risk_map.get(risk, {}).get(ui_language, risk_map.get(risk, {}).get("en", risk))
+
+
+def localized_visual_field(candidate: JsonDict, field: str, ui_language: str) -> str:
+    value: str = str(candidate.get(field, ""))
+    if ui_language == "zh":
+        return value
+    return GENERIC_VISUAL_FIELD_L10N.get(ui_language, GENERIC_VISUAL_FIELD_L10N.get("en", {})).get(field, value)
+
+
 def natural_sort_key(path: Path) -> list[tuple[int, int | str]]:
     parts: list[str] = re.split(r"(\d+)", path.name.lower())
     return [(0, int(part)) if part.isdigit() else (1, part) for part in parts]
@@ -352,6 +920,61 @@ def touch_status(task_dir: Path, status_name: str) -> Path:
     return path
 
 
+def confirm_token_path(task_dir: Path) -> Path:
+    return status_dir(task_dir) / "confirm.token"
+
+
+def ensure_confirm_token(task_dir: Path) -> str:
+    path: Path = confirm_token_path(task_dir)
+    if path.exists():
+        token: str = path.read_text(encoding="utf-8").strip()
+        if token:
+            return token
+    token = secrets.token_urlsafe(24)
+    write_text(path, token + "\n")
+    return token
+
+
+def valid_confirm_token(task_dir: Path, token: str) -> bool:
+    path: Path = confirm_token_path(task_dir)
+    if not path.exists() or not token:
+        return False
+    return secrets.compare_digest(path.read_text(encoding="utf-8").strip(), token)
+
+
+def confirmation_receipt(token: str, confirmed_at: str) -> JsonDict:
+    return {
+        "method": "browser-form",
+        "confirmed_by": "user-click",
+        "token_verified": True,
+        "token_sha256": hashlib.sha256(token.encode("utf-8")).hexdigest(),
+        "confirmed_at": confirmed_at,
+    }
+
+
+def validate_generation_guard(task_dir: Path) -> list[str]:
+    errors: list[str] = []
+    brief: JsonDict = read_json(task_dir / "brief-confirmed.json")
+    if not brief:
+        errors.append(f"Missing confirmed brief: {task_dir / 'brief-confirmed.json'}")
+        return errors
+    if brief.get("confirmed") is not True:
+        errors.append("Confirmed brief exists but confirmed is not true.")
+    if not (status_dir(task_dir) / STATUS_FILES["confirmed"]).exists():
+        errors.append(f"Missing confirmation status: {status_dir(task_dir) / STATUS_FILES['confirmed']}")
+    receipt: Any = brief.get("confirmation_gate")
+    if not isinstance(receipt, dict):
+        errors.append("Missing confirmation_gate receipt; open the confirmation page and submit the form.")
+    else:
+        if receipt.get("method") != "browser-form":
+            errors.append("confirmation_gate.method is not browser-form.")
+        if receipt.get("confirmed_by") != "user-click":
+            errors.append("confirmation_gate.confirmed_by is not user-click.")
+        if receipt.get("token_verified") is not True:
+            errors.append("confirmation_gate.token_verified is not true.")
+    return errors
+
+
 def selected_choice(question: Question, value: str) -> Choice:
     for choice in question.choices:
         if choice.value == value:
@@ -359,7 +982,9 @@ def selected_choice(question: Question, value: str) -> Choice:
     return next(choice for choice in question.choices if choice.value == question.default)
 
 
-def default_intake_value(question: Question, sources: list[str]) -> str:
+def default_intake_value(question: Question, sources: list[str], ui_language: str = "zh") -> str:
+    if question.key == "content_language" and ui_language in {"zh", "en", "de", "fr", "it", "es"}:
+        return ui_language
     if question.key == "source_boundary":
         return "provided-only" if sources else "web-with-sources"
     if question.key == "research_strategy":
@@ -703,9 +1328,10 @@ def build_visual_candidates(topic: str, selections: JsonDict) -> tuple[VisualCan
     return libraries.get(context, default_candidates)
 
 
-def html_page(title: str, body: str) -> str:
+def html_page(title: str, body: str, ui_language: str = "zh") -> str:
+    html_language: str = HTML_LANG.get(ui_language, HTML_LANG["zh"])
     return f"""<!doctype html>
-<html lang="zh-CN">
+<html lang="{html.escape(html_language)}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -854,17 +1480,28 @@ def question_section(question: Question, current: str = "") -> str:
 </section>"""
 
 
-def build_draft_brief(task_slug: str, topic: str, sources: list[str]) -> JsonDict:
+def build_draft_brief(
+    task_slug: str,
+    topic: str,
+    sources: list[str],
+    ui_language: str = "auto",
+    conversation_text: str = "",
+) -> JsonDict:
     source_items: list[JsonDict] = build_source_items(sources)
+    fallback_text: str = " ".join([topic, task_slug, *sources])
+    resolved_ui_language: str = resolve_ui_language(ui_language, conversation_text, fallback_text)
     return {
         "version": "0.1",
         "task_slug": task_slug,
         "topic": topic or task_slug.replace("-", " "),
+        "ui_language": resolved_ui_language,
+        "ui_language_source": "explicit" if ui_language in SUPPORTED_UI_LANGUAGES else "auto-detected",
+        "conversation_text": conversation_text,
         "sources": source_items,
         "selections": {
             question.key: {
-                "value": default_intake_value(question, sources),
-                "label": selected_choice(question, default_intake_value(question, sources)).label,
+                "value": default_intake_value(question, sources, resolved_ui_language),
+                "label": selected_choice(question, default_intake_value(question, sources, resolved_ui_language)).label,
                 "source": "default",
             }
             for question in INTAKE_QUESTIONS
@@ -942,6 +1579,7 @@ def infer_risks(sources: list[JsonDict]) -> list[str]:
 def apply_intake_selection(draft: JsonDict, form: dict[str, list[str]]) -> JsonDict:
     selections: JsonDict = {}
     draft_selections: JsonDict = draft.get("selections", {})
+    ui_language: str = ui_language_from_brief(draft)
     form_sources_text: str = first_form_value(form, "sources_text", "").strip()
     draft_sources: list[str] = source_paths_from_items(draft.get("sources", []))
     selected_sources: list[str] = parse_sources_text(form_sources_text) if form_sources_text else draft_sources
@@ -951,10 +1589,12 @@ def apply_intake_selection(draft: JsonDict, form: dict[str, list[str]]) -> JsonD
         fallback: str = (
             str(draft_item.get("value", ""))
             if isinstance(draft_item, dict) and draft_item.get("value")
-            else default_intake_value(question, selected_sources)
+            else default_intake_value(question, selected_sources, ui_language)
         )
         value: str = first_form_value(form, question.key, fallback)
         choice: Choice = selected_choice(question, value)
+        if value not in {item.value for item in question.choices}:
+            value = choice.value
         custom: str = first_form_value(form, f"{question.key}__custom", "").strip()
         selections[question.key] = {
             "value": value,
@@ -1284,9 +1924,9 @@ def render_visual_candidate_card(candidate: VisualCandidate, checked: bool) -> s
 </label>"""
 
 
-def render_sources(sources: Any) -> str:
+def render_sources(sources: Any, ui_language: str = "zh") -> str:
     if not isinstance(sources, list) or not sources:
-        return "<p class='risk'>未记录资料来源。可以在下面粘贴本地路径、网页 URL 或 Google Drive 地址。</p>"
+        return f"<p class='risk'>{html.escape(t(ui_language, 'no_sources'))}</p>"
     items: list[str] = []
     for source in sources:
         if not isinstance(source, dict):
@@ -1300,19 +1940,31 @@ def render_sources(sources: Any) -> str:
 def render_confirm(task_dir: Path) -> str:
     draft: JsonDict = read_json(task_dir / "brief-draft.json")
     selected: JsonDict = read_json(task_dir / "intake-selection.json", draft)
+    ui_language: str = ui_language_from_brief(selected)
+    confirm_token: str = ensure_confirm_token(task_dir)
     rows: list[str] = []
     selections: JsonDict = selected.get("selections", {})
     for question in INTAKE_QUESTIONS:
-        item: JsonDict = selections.get(question.key, {})
+        raw_item: Any = selections.get(question.key, {})
+        item: JsonDict
+        if isinstance(raw_item, dict) and raw_item.get("label"):
+            item = raw_item
+        else:
+            choice: Choice = selected_choice(question, question.default)
+            item = {
+                "value": choice.value,
+                "label": choice.label,
+                "source": "default",
+            }
         rows.append(
             "<tr>"
-            f"<th>{html.escape(question.title)}</th>"
-            f"<td>{html.escape(str(item.get('label', '')))}</td>"
-            f"<td><span class='source-tag'>{html.escape(str(item.get('source', 'unknown')))}</span></td>"
+            f"<th>{html.escape(localized_question_title(question, ui_language))}</th>"
+            f"<td>{html.escape(localized_choice_label(question, item, ui_language))}</td>"
+            f"<td><span class='source-tag'>{html.escape(localized_source(str(item.get('source', 'unknown')), ui_language))}</span></td>"
             "</tr>"
         )
     risks: list[str] = selected.get("risks", draft.get("risks", []))
-    risk_html: str = "".join(f"<li>{html.escape(str(risk))}</li>" for risk in risks) or "<li>未发现明显风险。</li>"
+    risk_html: str = "".join(f"<li>{html.escape(localized_risk(str(risk), ui_language))}</li>" for risk in risks) or f"<li>{html.escape(t(ui_language, 'no_risks'))}</li>"
     visual_direction: JsonDict = selected.get("visual_direction", {})
     selected_candidate: JsonDict = {}
     if isinstance(visual_direction, dict):
@@ -1327,50 +1979,51 @@ def render_confirm(task_dir: Path) -> str:
         f'<span class="swatch-preview" style="background:{html.escape(str(color))}"></span>'
         for color in selected_candidate.get("palette", [])
     )
-    body: str = f"""<div class="topline">Brief Confirmation Gate</div>
-<h1>确认生成简报</h1>
-<p>请最后确认一次。只有点击“确认并开始生成”后，agent 才应调用 Codex Presentations plugin。</p>
+    body: str = f"""<div class="topline">{html.escape(t(ui_language, "brief_gate"))}</div>
+<h1>{html.escape(t(ui_language, "confirm_title"))}</h1>
+<p>{html.escape(t(ui_language, "confirm_intro"))}</p>
 <section class="section">
-  <h2>主题</h2>
+  <h2>{html.escape(t(ui_language, "topic"))}</h2>
   <p><strong>{html.escape(str(selected.get("topic", draft.get("topic", ""))))}</strong></p>
 </section>
 <section class="section">
-  <h2>资料来源</h2>
-  {render_sources(selected.get("sources", draft.get("sources", [])))}
+  <h2>{html.escape(t(ui_language, "sources"))}</h2>
+  {render_sources(selected.get("sources", draft.get("sources", [])), ui_language)}
 </section>
 <section class="section">
-  <h2>选择汇总</h2>
+  <h2>{html.escape(t(ui_language, "summary"))}</h2>
   <table>
-    <thead><tr><th>项目</th><th>选择</th><th>来源</th></tr></thead>
+    <thead><tr><th>{html.escape(t(ui_language, "item"))}</th><th>{html.escape(t(ui_language, "selection"))}</th><th>{html.escape(t(ui_language, "source"))}</th></tr></thead>
     <tbody>{''.join(rows)}</tbody>
   </table>
 </section>
 <section class="section">
-  <h2>选定视觉方向</h2>
+  <h2>{html.escape(t(ui_language, "visual_direction"))}</h2>
   <h3>{html.escape(str(selected_candidate.get("name", "")))}</h3>
-  <p>{html.escape(str(selected_candidate.get("summary", "")))}</p>
+  <p>{html.escape(localized_visual_field(selected_candidate, "summary", ui_language))}</p>
   <div class="swatches-preview">{palette_html}</div>
-  <p><strong>背景策略：</strong>{html.escape(str(selected_candidate.get("background", "")))}</p>
-  <p><strong>版式节奏：</strong>{html.escape(str(selected_candidate.get("layout", "")))}</p>
-  <p><strong>图表语法：</strong>{html.escape(str(selected_candidate.get("chart", "")))}</p>
-  <p><strong>图片策略：</strong>{html.escape(str(selected_candidate.get("image_strategy", "")))}</p>
-  <p><strong>风险：</strong>{html.escape(str(selected_candidate.get("risk", "")))}</p>
+  <p><strong>{html.escape(t(ui_language, "background"))}:</strong> {html.escape(localized_visual_field(selected_candidate, "background", ui_language))}</p>
+  <p><strong>{html.escape(t(ui_language, "layout"))}:</strong> {html.escape(localized_visual_field(selected_candidate, "layout", ui_language))}</p>
+  <p><strong>{html.escape(t(ui_language, "chart"))}:</strong> {html.escape(localized_visual_field(selected_candidate, "chart", ui_language))}</p>
+  <p><strong>{html.escape(t(ui_language, "image_strategy"))}:</strong> {html.escape(localized_visual_field(selected_candidate, "image_strategy", ui_language))}</p>
+  <p><strong>{html.escape(t(ui_language, "risk"))}:</strong> {html.escape(localized_visual_field(selected_candidate, "risk", ui_language))}</p>
 </section>
 <section class="section">
-  <h2>生成前风险</h2>
+  <h2>{html.escape(t(ui_language, "pre_generation_risks"))}</h2>
   <ul>{risk_html}</ul>
 </section>
 <section class="section">
-  <h2>生成策略</h2>
-  <p>先生成 v1 PPTX 和 contact sheet，并集中保存到 <code>{html.escape(str(task_dir))}</code>，然后打开 style-review.html 供选择是否重绘。</p>
+  <h2>{html.escape(t(ui_language, "generation_strategy"))}</h2>
+  <p>{html.escape(t(ui_language, "generation_strategy_text").format(task_dir=str(task_dir)))}</p>
 </section>
 <form method="post" action="/api/confirm">
+  <input type="hidden" name="confirm_token" value="{html.escape(confirm_token)}">
   <div class="actions">
-    <a class="button secondary" href="/visual-inspiration">返回修改视觉方向</a>
-    <button type="submit">确认并开始生成</button>
+    <a class="button secondary" href="/visual-inspiration">{html.escape(t(ui_language, "back_visual"))}</a>
+    <button type="submit">{html.escape(t(ui_language, "confirm_button"))}</button>
   </div>
 </form>"""
-    return html_page("Presentation Director Confirm", body)
+    return html_page(t(ui_language, "confirm_title"), body, ui_language)
 
 
 def render_style_review(task_dir: Path) -> str:
@@ -1518,7 +2171,10 @@ Confirmed brief:
 {json.dumps(brief, ensure_ascii=False, indent=2)}
 
 Rules:
-- Audience, goal, research strategy, source boundary, logo policy, image policy, selected visual direction, and output constraints are locked.
+- Before calling Codex Presentations, run:
+  python3 "{script_path}" --base-dir "{task_dir.parent.parent}" guard --task "{task_dir.name}"
+  If the guard fails, open the confirmation page and wait for the user to confirm.
+- Audience, goal, research strategy, source boundary, content language, logo policy, image policy, selected visual direction, and output constraints are locked.
 - Do not fabricate metrics, logos, customer names, screenshots, or official-looking brand assets.
 - Use official or user-provided brand assets only.
 - AI images are allowed only according to the confirmed image policy.
@@ -1610,7 +2266,8 @@ class DirectorHandler(BaseHTTPRequestHandler):
         elif path.startswith("/static/"):
             self.send_static(path.removeprefix("/static/"))
         elif path == "/confirmed":
-            self.send_html(message_page("Brief confirmed", "可以回到 Codex，agent 会检测 confirmed.ready 并开始生成。"))
+            ui_language: str = ui_language_for_task(self.task_dir)
+            self.send_html(message_page(t(ui_language, "confirmed_title"), t(ui_language, "confirmed_message"), ui_language))
         elif path == "/revision-saved":
             self.send_html(message_page("Revision saved", "可以回到 Codex，agent 会检测 revision.ready 并生成对比版本。"))
         elif path == "/final-selected":
@@ -1640,12 +2297,22 @@ class DirectorHandler(BaseHTTPRequestHandler):
             render_all_pages(self.task_dir)
             self.redirect("/confirm")
         elif parsed.path == "/api/confirm":
+            confirm_token: str = first_form_value(form, "confirm_token", "")
+            if not valid_confirm_token(self.task_dir, confirm_token):
+                ui_language: str = ui_language_for_task(self.task_dir)
+                self.send_error(
+                    HTTPStatus.FORBIDDEN,
+                    t(ui_language, "invalid_token"),
+                )
+                return
             selected: JsonDict = read_json(self.task_dir / "intake-selection.json")
             if not selected:
                 selected = read_json(self.task_dir / "brief-draft.json")
             selected = ensure_visual_selection(selected)
+            confirmed_at: str = datetime.now().isoformat(timespec="seconds")
             selected["confirmed"] = True
-            selected["confirmed_at"] = datetime.now().isoformat(timespec="seconds")
+            selected["confirmed_at"] = confirmed_at
+            selected["confirmation_gate"] = confirmation_receipt(confirm_token, confirmed_at)
             write_json(self.task_dir / "brief-confirmed.json", selected)
             touch_status(self.task_dir, "confirmed")
             render_all_pages(self.task_dir)
@@ -1730,7 +2397,7 @@ class DirectorHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
 
-def message_page(title: str, message: str) -> str:
+def message_page(title: str, message: str, ui_language: str = "zh") -> str:
     body: str = f"""<div class="topline">Presentation Director</div>
 <h1>{html.escape(title)}</h1>
 <section class="section"><p>{html.escape(message)}</p></section>
@@ -1740,7 +2407,7 @@ def message_page(title: str, message: str) -> str:
   <a class="button" href="/style-review">Style Review</a>
   <a class="button" href="/compare">Compare</a>
 </div>"""
-    return html_page(title, body)
+    return html_page(title, body, ui_language)
 
 
 def resolve_task_dir(args: argparse.Namespace) -> Path:
@@ -1753,7 +2420,13 @@ def resolve_task_dir(args: argparse.Namespace) -> Path:
 def command_init(args: argparse.Namespace) -> None:
     task_dir: Path = resolve_task_dir(args)
     task_dir.mkdir(parents=True, exist_ok=True)
-    brief: JsonDict = build_draft_brief(slugify(args.task), args.topic or args.task, args.source or [])
+    brief: JsonDict = build_draft_brief(
+        slugify(args.task),
+        args.topic or args.task,
+        args.source or [],
+        args.ui_language,
+        args.conversation_text,
+    )
     write_json(task_dir / "brief-draft.json", brief)
     render_all_pages(task_dir)
     print(f"Presentation Director task created: {task_dir}")
@@ -1833,6 +2506,17 @@ def command_prompt(args: argparse.Namespace) -> None:
         raise SystemExit(f"Unknown prompt kind: {args.kind}")
 
 
+def command_guard(args: argparse.Namespace) -> None:
+    task_dir: Path = resolve_task_dir(args)
+    errors: list[str] = validate_generation_guard(task_dir)
+    if errors:
+        print("Presentation Director guard failed:", file=sys.stderr)
+        for error in errors:
+            print(f"- {error}", file=sys.stderr)
+        raise SystemExit(2)
+    print(f"Presentation Director guard passed: {task_dir}")
+
+
 def command_open_page(args: argparse.Namespace) -> None:
     resolve_task_dir(args)
     open_director_page(args.host, args.port, args.page)
@@ -1861,6 +2545,13 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument("--task", required=True, help="Task slug or title.")
     init_parser.add_argument("--topic", default="", help="Optional topic/title shown in the brief.")
     init_parser.add_argument("--source", action="append", default=[], help="Source path or URL. Repeatable.")
+    init_parser.add_argument(
+        "--ui-language",
+        choices=("auto", "zh", "en", "de", "fr", "it", "es"),
+        default="auto",
+        help="Language for Director communication UI. auto detects from --conversation-text or topic.",
+    )
+    init_parser.add_argument("--conversation-text", default="", help="Recent user conversation text for auto-detecting the Director UI language.")
     init_parser.set_defaults(func=command_init)
 
     render_parser = subparsers.add_parser("render", help="Regenerate HTML pages from current JSON.")
@@ -1894,6 +2585,10 @@ def build_parser() -> argparse.ArgumentParser:
     prompt_parser.add_argument("--task", required=True, help="Task slug or title.")
     prompt_parser.add_argument("--kind", choices=("initial", "revision"), required=True)
     prompt_parser.set_defaults(func=command_prompt)
+
+    guard_parser = subparsers.add_parser("guard", help="Validate that a net-new PPTX task passed the user confirmation gate.")
+    guard_parser.add_argument("--task", required=True, help="Task slug or title.")
+    guard_parser.set_defaults(func=command_guard)
 
     open_parser = subparsers.add_parser("open-page", help="Open a running Director page in the default browser.")
     open_parser.add_argument("--task", required=True, help="Task slug or title.")

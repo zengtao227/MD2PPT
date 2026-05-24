@@ -50,9 +50,13 @@ Codex 中生成专业可编辑 PPTX 的主路径。它应使用 artifact-tool `p
 
 ### Presentation Director
 
-Codex 环境下创建全新 PPTX 前的交互增强层。它不生成 PPTX，而是先用点击式 intake 收集听众、目标、资料路径或网页地址、资料研究策略、资料边界、logo/品牌素材、AI 生图许可、输出限制和视觉方向，再通过 brief confirmation gate 让用户确认，之后才把确认后的 brief 交给 Codex Presentations。
+Codex 环境下创建全新 PPTX 前的交互增强层。它不生成 PPTX，而是先用点击式 intake 收集听众、目标、资料路径或网页地址、资料研究策略、资料边界、内容语言、logo/品牌素材、AI 生图许可、页数/时长限制和视觉方向，再通过 brief confirmation gate 让用户确认，之后才把确认后的 brief 交给 Codex Presentations。
 
-Director 交互页应自动打开，不要让用户复制本地 URL。`serve` 默认打开 `intake`；用户点“下一步”后进入 `visual-inspiration`，再进入确认页。批处理或后台运行可显式传 `--no-open`。`style-review` 和 `compare` 可用 `presentation_director.py open-page` 或 `render --open-page ...` 打开。
+Director 的沟通界面语言和 PPT 正文语言是两个不同概念：`ui_language` 默认根据当前对话文本自动检测，用于确认页和按钮等用户沟通文案；`content_language` 用于控制 PPT 正文、标题和讲稿语言。运行 `init` 时应传入最近用户请求作为 `--conversation-text`，让确认页跟随用户对话语言。
+
+Director 交互页应自动打开，不要让用户复制本地 URL。`serve` 默认打开 `intake`；用户点“下一步”后进入 `visual-inspiration`，再进入确认页。批处理或后台运行可显式传 `--no-open`。
+
+Codex 交互式全新 PPTX 请求必须打开确认页并等待用户确认；agent 不得自己 POST `/api/confirm`、不得直接写入 `brief-confirmed.json` 或 `confirmed.ready` 来代替用户确认。只有用户明确说“跳过确认/直接生成/不用等我确认”时，才允许后台确认。`style-review` 和 `compare` 可用 `presentation_director.py open-page` 或 `render --open-page ...` 打开。
 
 ### Research Strategy Gate
 
@@ -140,10 +144,12 @@ Codex Presentations 插件内部可能仍按插件规则使用 `outputs/<thread-
 
 本地 `skills/pptx` + pptxgenjs 路径。用于 Claude Code 或没有 Codex `Presentations` 能力时的备用方案。
 
+Claude Code / 本地代理也要遵守同一套前置确认原则：内容语言和页数/时长分开收集；如果本地可用 Presentation Director helper，应先跑 intake / confirmation 并通过 `guard` 后再用 pptxgenjs 或 HTML 工具生成；如果 helper 不可用，必须在聊天或静态 HTML 中做等价确认，不能直接生成全新 deck。
+
 ### 工作流优先级
 
 1. Codex `Presentations`：全新、可编辑、可验证 PPTX 的首选。
-2. Claude Code / 本地代理：`skills/pptx` + pptxgenjs，适合没有 Codex `Presentations` 的可编辑备选路径。
+2. Claude Code / 本地代理：Presentation Director 或等价确认 → `skills/pptx` + pptxgenjs，适合没有 Codex `Presentations` 的可编辑备选路径。
 3. VS Code + Marp：快速草稿、预览、PDF 和放映版，不作为默认的专业 PPTX 路径。
 
 ## 当前推荐路径
@@ -157,7 +163,7 @@ Research Strategy Gate
     ↓
 Visual Inspiration Gate
     ↓
-brief confirmation (Codex net-new PPTX)
+brief confirmation (Codex net-new PPTX; open page and wait for user)
     ↓
 Codex Presentations
     ↓
@@ -223,6 +229,8 @@ PPTX/<task-slug>/final/<deck-title>.html
 
 - 默认用中文沟通。
 - 优先用 `Presentation Director`、`brief confirmation`、`Codex Presentations`、`style-review`、`deck.md`、`design intelligence`、`visual contract` 这些术语描述流程。
-- 在 Codex 全新 PPTX 请求中，先走 Presentation Director；不要直接启动 Presentations，除非用户明确跳过或已有 confirmed brief。
+- 在 Codex 全新 PPTX 请求中，先走 Presentation Director；必须打开确认页并等待用户确认，不要直接启动 Presentations，除非用户明确跳过或已有用户确认过的 confirmed brief。
+- 在 Claude Code / 本地代理中，也必须沿用同一套语言字段、页数字段和生成前确认门禁；可用 Presentation Director 时先跑 `guard`，不可用时做等价 chat/static confirmation。
+- Claude 可用 `scripts/hooks/claude-presentation-director-prompt.py` 做 UserPromptSubmit 提醒，用 `scripts/hooks/presentation-director-guard.sh` 做生成前 guard adapter。
 - 不把 Marp PPTX 称为可细编辑 PPTX；Marp 更适合快速写作、预览、PDF 和放映版输出。
 - 不把 `ui-ux-pro-max` 或 Open Design 称为 PPTX 生成器；它们分别是设计情报和视觉合同来源。

@@ -7,7 +7,7 @@ description: Orchestrates professional presentation creation from source materia
 
 A workflow orchestration skill for building professional presentations.
 
-In Codex, this skill is the front door for net-new PPTX requests: run `Presentation Director` first, confirm research strategy and visual inspiration, then hand the confirmed brief to the Codex Presentations plugin. Do not let Codex Presentations start from an unconfirmed prompt unless the user explicitly asks to skip the director.
+In Codex, this skill is the front door for net-new PPTX requests: run `Presentation Director` first, confirm research strategy and visual inspiration, open the confirmation page, wait for the user to confirm, then hand the confirmed brief to the Codex Presentations plugin. Do not let Codex Presentations start from an unconfirmed prompt unless the user explicitly asks to skip the director.
 
 Outside Codex, this skill coordinates the fuller deck.md-centered workflow: source material through slide planning, design intelligence, visual contract, and verified PPTX or HTML output.
 
@@ -81,7 +81,7 @@ Resolve dependencies in this order:
 
 | Dependency | Resolution |
 |------------|------------|
-| Presentation Director | Use `scripts/presentation_director.py` in the current repo if present; otherwise use `scripts/presentation_director.py` beside this SKILL.md. In Codex net-new PPTX requests, this is the first step before Presentations unless the user explicitly skips it or a confirmed brief already exists. |
+| Presentation Director | Use `scripts/presentation_director.py` in the current repo if present; otherwise use `scripts/presentation_director.py` beside this SKILL.md. In Codex net-new PPTX requests, this is the first step before Presentations unless the user explicitly skips it or a user-confirmed brief already exists. |
 | `design-consultant` | Use the current repo's `skills/ui-ux-pro-max/scripts/search.py` if present; otherwise try `$HOME/.claude/skills/ui-ux-pro-max/scripts/search.py`, then `$HOME/.codex/skills/ui-ux-pro-max/scripts/search.py`. If none exists, synthesize a short design intelligence brief from the source and mark the tool as unavailable. |
 | `design-locks/` | Use the current repo's `design-locks/` if present. Otherwise look for `design-locks/` inside the directory containing this SKILL.md (bundled by install.sh). If neither exists, use a lightweight visual contract written directly in `deck.md` and do not cite a missing lock file. |
 | PPTX fallback | Use `skills/pptx/SKILL.md` only when it exists in the current repo. If absent, do not pretend the fallback is available. |
@@ -152,7 +152,8 @@ Use this path when Codex has the Presentations plugin available and the user ask
     topic / links / files / folder / existing notes
         ↓
 [2] Presentation Director intake
-    click-based audience, goal, source paths/URLs, research strategy, source boundary, logo policy, image policy, output constraints
+    click-based audience, goal, source paths/URLs, research strategy, source boundary, content language, logo policy, image policy, output constraints
+    UI communication language auto-detected from the current conversation; content_language remains the deck body language
         ↓
 [3] Research Strategy Gate
     Codex deep web research / external Deep Research packet / hybrid / provided-only
@@ -161,7 +162,7 @@ Use this path when Codex has the Presentations plugin available and the user ask
     3 dynamic visual candidates from topic, deck type, audience, design-locks, ui-ux-pro-max, and deck UI references
         ↓
 [5] Brief Confirmation Gate  ← HARD STOP
-    user reviews the summarized plan and clicks "confirm"
+    open the confirmation page; user reviews the summarized plan and clicks "confirm"
         ↓
 [6] Codex Presentations
     confirmed brief → claim spine → design system → contact-sheet plan → editable PPTX
@@ -180,11 +181,17 @@ PPTX/<task-slug>/final/<deck-title>.html
 
 For this Codex path, do not pre-lock `design-locks/`, palette, or per-slide layout before v1 unless the user explicitly asks. The visual inspiration gate should select a direction, not a rigid template. The goal is to lock intent, source boundaries, research strategy, and visual target, then give Presentations room to produce a stronger first draft.
 
+In interactive Codex sessions, the confirmation gate is a real user-action gate: the agent must not POST `/api/confirm`, write `brief-confirmed.json`, or touch `confirmed.ready` on the user's behalf. Use the local Director server, open the confirm page, wait for `confirmed.ready`, and continue only after the user clicks confirm. The only exception is an explicit user instruction to skip confirmation or generate directly.
+
 ### Claude / Offline / HTML Path
 
 ```
 [1] Source Material
     Article / book / knowledge doc / engineering project / topic
+        ↓
+[1.5] Presentation Director / Equivalent Intake Gate
+    content_language → output_constraints → research boundary → visual target
+    user confirmation required before generation
         ↓
 [2] Slide Planner  ← NEVER skip this step
     audience → thesis → arc → slide claims → proof objects → omissions
@@ -214,6 +221,8 @@ HTML-deck-only route:
 
 Skipping Step 2 produces information dumps, not presentations.
 
+Claude Code and offline agents follow the same confirmation principle as Codex. If the Presentation Director helper is available, run its intake/confirmation flow and `guard` before generating with pptxgenjs or HTML tooling. If it is not available, present an equivalent chat/static confirmation covering `content_language`, `output_constraints`, audience, goal, slide plan, source boundary, and visual direction; stop until the user explicitly confirms.
+
 ---
 
 ## Tool Routing
@@ -222,7 +231,7 @@ Skipping Step 2 produces information dumps, not presentations.
 |-------------|-----------------|-------|
 | Codex net-new PPTX | Presentation Director → Presentations plugin **(primary PPTX)** | Intake + research strategy + visual inspiration + brief confirmation must happen before `artifact-tool presentation-jsx` |
 | Codex targeted edit / confirmed brief | Presentations plugin | Direct only when not creating a new deck or when `brief-confirmed.json` already exists |
-| Claude Code / offline | `skills/pptx` + pptxgenjs **(fallback PPTX)** | pptxgenjs |
+| Claude Code / offline | Presentation Director or equivalent confirmation → `skills/pptx` + pptxgenjs **(fallback PPTX)** | Same `content_language` / `output_constraints` split and user-confirmation gate apply before pptxgenjs |
 | Either | HTML deck skill, when installed | `html-ppt-skill` or `guizang-ppt-skill`; secondary output for online sharing |
 | Either | Marp | Quick draft / PDF only — not editable PPTX |
 
@@ -258,8 +267,11 @@ python3 <deck-builder-skill-dir>/scripts/presentation_director.py --help
 python3 scripts/presentation_director.py init \
   --task "<short task slug>" \
   --topic "<inferred or user-provided topic>" \
-  --source "<resolved source path or URL>"
+  --source "<resolved source path or URL>" \
+  --conversation-text "<recent user prompt or conversation excerpt>"
 ```
+
+Use `--ui-language auto` by default. The confirmation page should follow the user's current conversation language, while `content_language` controls the language of the generated slide content.
 
 3. Start the local UI server:
 
@@ -305,7 +317,7 @@ python3 scripts/presentation_director.py render --task "<short task slug>" --ope
 python3 scripts/presentation_director.py wait --task "<short task slug>" --for final-selection
 ```
 
-Do not bypass this flow in an interactive Codex session unless the user explicitly says to skip it.
+Do not bypass this flow in an interactive Codex session unless the user explicitly says to skip it. A casual "continue" after providing source material is not enough to replace the brief confirmation click.
 
 ## Claude / Offline / HTML Execution Steps
 
@@ -324,7 +336,7 @@ The steps below are for environments without Codex Presentations, or for HTML ou
 Read `references/slide-planner.md` for the full planner protocol.
 
 Produce `slide-plan.md` containing:
-- `audience`, `goal`, `thesis`, `arc`, `slide-count`
+- `audience`, `goal`, `content_language`, `output_constraints`, `thesis`, `arc`, `slide-count`
 - Per-slide: `claim`, `proof-object`, `layout-family`, `source`, `missing`
 - `appendix-plan`: what moves to notes or appendix, not the main deck
 
@@ -339,6 +351,8 @@ In an interactive session (human is present):
 Rationale: skipping this confirmation forces an expensive full-rerun if the structure is wrong. The cost of pausing here is near zero.
 
 In a batch / automated / non-interactive context: write `slide-plan.md`, log "slide-plan.md written — proceeding to deck.md", then continue without waiting.
+
+For net-new PPTX work, this slide-plan confirmation does not replace the Director confirmation gate when the Director helper is available. Run the helper and guard before generation, or use the equivalent chat/static confirmation only when the helper cannot be used.
 
 ### Claude Step 3 — Write deck.md
 
@@ -514,6 +528,14 @@ Read `references/prompt-templates.md` for ready-to-use prompts.
 - In Codex: use Template A (Presentations plugin)
 - In Claude Code: use Template B (pptxgenjs fallback)
 - HTML deck (either environment): use Template C (html-ppt-skill or guizang-ppt-skill)
+
+Before generating a net-new deck in a workspace that has Presentation Director, run:
+
+```bash
+python3 scripts/presentation_director.py --base-dir "." guard --task "<task-slug>"
+```
+
+If that guard fails, open the Director confirmation page and wait for the user to confirm. Do not generate PPTX/HTML by treating a conversational "continue" as a substitute for the confirmation gate unless the user explicitly asks to skip the gate or generate directly.
 
 ### Claude Step 7 — Render QA
 
