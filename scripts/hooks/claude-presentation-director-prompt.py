@@ -9,6 +9,7 @@ import sys
 PRESENTATION_RE: re.Pattern[str] = re.compile(
     r"pptx?|"
     r"(?<![A-Za-z])(powerpoint|slides?|slide deck|presentation|deck)(?![A-Za-z])|"
+    r"(präsentation|praesentation|folien)|"
     r"(幻灯片|演示文稿|做\s*PPT|生成\s*PPT|制作\s*PPT)",
     re.IGNORECASE,
 )
