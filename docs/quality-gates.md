@@ -1,4 +1,4 @@
-# MD2PPT Quality Gates
+# Presentation Director Quality Gates
 
 Every deck produced by the `deck-builder` pipeline must pass all four gates before being declared done. These gates apply regardless of output format (PPTX or HTML) and regardless of generation engine (Codex Presentations, pptxgenjs, guizang-ppt-skill, html-ppt-skill).
 
@@ -57,6 +57,8 @@ Checked after generation — mandatory before declaring done.
 |-------|---------------|----------------|
 | Per-slide preview images exist | At least one render pass completed | Re-render before declaring done |
 | Contact sheet generated | Thumbnail grid of all slides exists | Generate contact sheet |
+| No text overlaps | Titles, subtitles, body text, labels, footers, page numbers, and connector lines do not collide | Move elements, widen text boxes, reduce font size, or reduce copy, then re-render |
+| Long-title safe zone respected | Wrapped titles still leave visible clearance before subtitles or body content | Reserve a taller title band or move the subtitle/content down |
 | Text overflow absent | No title wraps to a third line; no body text clips container | Fix text box size or reduce copy |
 | Footer / page number clear | Footer does not collide with content area | Adjust layout margins |
 | All text is editable | No text is rasterized or embedded as image | Rebuild as native text boxes |

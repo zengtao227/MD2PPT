@@ -1,8 +1,8 @@
-# MD2PPT
+# Presentation Director
 
-一套稳定的 Markdown 写 PPT 方案：用 Markdown 作为唯一源文件，在 VS Code 里实时预览，用 Marp CLI 导出 HTML、PDF 和 PPTX。
+Presentation Director 是一套面向高质量演示文稿生成和修改的工作流。它从 briefing、结构规划、设计方向、PPTX 生成、渲染 QA 到最终交付进行编排，默认目标是生成可编辑、可验证、可继续迭代的 `.pptx`。
 
-这个仓库的重点不是“把复杂 HTML 无损转 PPTX”，而是从一开始就用适合导出的 Markdown/CSS 写法，尽量保证 Preview、HTML、PDF、PPTX 之间不发生大的版式变形。
+仓库早期名为 MD2PPT，重点是 Markdown 到 PPTX/PDF 的稳定导出。现在的主定位已经升级为 Presentation Director：优先使用 intake、brief confirmation、Codex Presentations、render QA、style-review 和 targeted edit 流程；Markdown/Marp 仍保留为快速写作与离线备用路径。
 
 ## 推荐工作流
 

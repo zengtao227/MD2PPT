@@ -784,18 +784,20 @@ def render_confirm(task_dir: Path) -> str:
 
 
 def render_style_review(task_dir: Path) -> str:
-    contact_sheet: Path = task_dir / "v1" / "contact-sheet.png"
-    qa_summary: Path = task_dir / "v1" / "qa-summary.md"
-    pptx_path: Path = task_dir / "v1" / "final.pptx"
+    version_name: str = latest_review_version(task_dir)
+    version_dir: Path = task_dir / version_name
+    contact_sheet: Path = version_dir / "contact-sheet.png"
+    qa_summary: Path = version_dir / "qa-summary.md"
+    pptx_path: Path = version_dir / "final.pptx"
     image_html: str = (
-        '<img class="contact-sheet" src="/static/v1/contact-sheet.png" alt="v1 contact sheet">'
+        f'<img class="contact-sheet" src="/static/{html.escape(version_name)}/contact-sheet.png" alt="{html.escape(version_name)} contact sheet">'
         if contact_sheet.exists()
-        else "<p class='risk'>还没有找到 <code>v1/contact-sheet.png</code>。生成 v1 后刷新此页。</p>"
+        else f"<p class='risk'>还没有找到 <code>{html.escape(version_name)}/contact-sheet.png</code>。生成版本后刷新此页。</p>"
     )
     qa_text: str = qa_summary.read_text(encoding="utf-8") if qa_summary.exists() else "暂无 QA 摘要。"
     body: str = f"""<div class="topline">Style Review</div>
-<h1>第一版视觉复审</h1>
-<p>基于 v1 contact sheet 选择是否生成对比版本。不要复制 JSON，点击按钮即可。</p>
+<h1>视觉复审</h1>
+<p>基于当前最新版本 <strong>{html.escape(version_name)}</strong> 的 contact sheet 选择是否生成对比版本。不要复制 JSON，点击按钮即可。</p>
 <section class="section">
   <h2>当前版本</h2>
   {image_html}
@@ -803,6 +805,7 @@ def render_style_review(task_dir: Path) -> str:
   <pre>{html.escape(qa_text[:2400])}</pre>
 </section>
 <form method="post" action="/api/revision">
+  <input type="hidden" name="base_version" value="{html.escape(version_name)}">
   {''.join(question_section(group) for group in REVISION_GROUPS)}
   <section class="section">
     <h2>生成几个对比版本?</h2>
@@ -819,9 +822,10 @@ def render_style_review(task_dir: Path) -> str:
 
 
 def apply_revision_request(form: dict[str, list[str]]) -> JsonDict:
+    base_version: str = first_form_value(form, "base_version", "v1").strip() or "v1"
     request: JsonDict = {
         "version": "0.1",
-        "base_version": "v1",
+        "base_version": base_version,
         "revision_count": int(first_form_value(form, "revision_count", "1")),
         "created_at": datetime.now().isoformat(timespec="seconds"),
         "preserve": [
@@ -891,10 +895,32 @@ def render_all_pages(task_dir: Path) -> None:
     write_text(task_dir / "compare.html", render_compare(task_dir))
 
 
+def version_number(path: Path) -> int:
+    name: str = path.name
+    if len(name) > 1 and name[0] == "v" and name[1:].isdigit():
+        return int(name[1:])
+    return -1
+
+
+def latest_review_version(task_dir: Path) -> str:
+    candidates: list[Path] = [
+        item
+        for item in task_dir.iterdir()
+        if item.is_dir()
+        and version_number(item) >= 1
+        and (item / "contact-sheet.png").exists()
+        and (item / "final.pptx").exists()
+    ]
+    if not candidates:
+        return "v1"
+    return max(candidates, key=version_number).name
+
+
 def initial_prompt(task_dir: Path) -> str:
     brief: JsonDict = read_json(task_dir / "brief-confirmed.json")
     if not brief:
         return "No confirmed brief found. Confirm intake first."
+    script_path: Path = Path(__file__).resolve()
     return f"""Use the Codex Presentations skill and artifact-tool presentation JSX.
 
 Confirmed brief:
@@ -915,7 +941,11 @@ Output:
 - Copy the contact sheet and a concise QA summary to {task_dir / "v1"}.
 - Generate layout JSON and QA notes in the Presentations workspace.
 - Write a concise QA summary to {task_dir / "v1" / "qa-summary.md"}.
+- QA must include a rendered no-overlap check: titles, subtitles, body text, labels, footers, page numbers, and connector lines must not collide.
+- Long titles must be checked after PowerPoint rendering; if a title wraps and covers the subtitle or body area, fix and re-render before handoff.
 - After final selection, generate a view-only HTML companion at {task_dir / "final" / (task_dir.name + ".html")} from the selected version's per-slide previews.
+- Before returning control to the user after v1 generation, regenerate Director pages and start the local Director server with the style-review page open:
+  python3 "{script_path}" --base-dir "{task_dir.parent.parent}" serve --task "{task_dir.name}" --open-page style-review
 - Return PPTX path, HTML companion path, contact sheet path, QA summary, and remaining risks.
 """
 
@@ -924,10 +954,19 @@ def revision_prompt(task_dir: Path) -> str:
     request: JsonDict = read_json(task_dir / "revision-request.json")
     if not request:
         return "No revision request found. Complete style review first."
-    return f"""Revise the existing v1 PPTX using the selected revision request.
+    base_version: str = str(request.get("base_version") or "v1")
+    base_pptx: Path = task_dir / base_version / "final.pptx"
+    existing_versions: list[int] = [
+        version_number(item)
+        for item in task_dir.iterdir()
+        if item.is_dir() and version_number(item) >= 1
+    ]
+    next_version_number: int = (max(existing_versions) if existing_versions else 1) + 1
+    next_version: str = f"v{next_version_number}"
+    return f"""Revise the existing {base_version} PPTX using the selected revision request.
 
 Base version:
-{task_dir / "v1" / "final.pptx"}
+{base_pptx}
 
 Revision request:
 {json.dumps(request, ensure_ascii=False, indent=2)}
@@ -947,10 +986,12 @@ Change only the selected visual directions:
 
 Render and QA:
 - use the Presentations internal scratch workspace as required by the plugin
-- copy revised PPTX under {task_dir / "v2" / "final.pptx"} unless generating multiple versions
+- copy revised PPTX under {task_dir / next_version / "final.pptx"} unless generating multiple versions
 - copy per-slide preview PNGs into the version's `slides/` folder
 - copy contact sheet and QA summary into the same version folder
-- compare against v1
+- explicitly check rendered slides for text overlap, especially wrapped titles covering subtitles or body text
+- fix any overlap/cropping/too-tight spacing and re-render affected slides before final selection
+- compare against {base_version}
 - regenerate the final view-only HTML companion from the selected version's per-slide previews after final selection
 - document what changed and remaining risks
 """

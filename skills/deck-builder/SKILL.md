@@ -52,10 +52,10 @@ If in doubt: is this a net-new presentation from substantive source material? If
 
 ## Installation Paths
 
-Canonical copy lives in MD2PPT; sync to global locations as needed:
+Canonical copy lives in Presentation Director; sync to global locations as needed:
 
 ```
-MD2PPT/skills/deck-builder/         ← canonical source
+Presentation Director/skills/deck-builder/         ← canonical source
 ~/.claude/skills/deck-builder/       ← Claude Code (global)
 ~/.codex/skills/deck-builder/        ← Codex (sync only if ~/.codex/skills/ exists)
 ```
@@ -64,7 +64,7 @@ VS Code agent support depends on the specific agent extension — check its skil
 
 Sync command after edits to canonical:
 ```bash
-# Run from the MD2PPT repository root.
+# Run from the Presentation Director repository root.
 mkdir -p "$HOME/.claude/skills" "$HOME/.codex/skills"
 rm -rf "$HOME/.claude/skills/deck-builder" "$HOME/.codex/skills/deck-builder"
 cp -R "$(pwd)/skills/deck-builder" "$HOME/.claude/skills/"
@@ -75,7 +75,7 @@ cp -R "$(pwd)/skills/deck-builder" "$HOME/.codex/skills/"
 
 ## Dependency Resolution
 
-This skill is global, so do not assume MD2PPT-local paths exist in every project.
+This skill is global, so do not assume Presentation Director local paths exist in every project.
 
 Resolve dependencies in this order:
 
@@ -86,7 +86,7 @@ Resolve dependencies in this order:
 | `design-locks/` | Use the current repo's `design-locks/` if present. Otherwise look for `design-locks/` inside the directory containing this SKILL.md (bundled by install.sh). If neither exists, use a lightweight visual contract written directly in `deck.md` and do not cite a missing lock file. |
 | PPTX fallback | Use `skills/pptx/SKILL.md` only when it exists in the current repo. If absent, do not pretend the fallback is available. |
 | HTML engines | Use `html-ppt-skill` or `guizang-ppt-skill` only when the skill/tool is available in the active environment. If neither is available, explain the missing dependency or generate only the handoff prompt. |
-| MD2PPT docs | Treat `docs/pptx-master-workflow.md` and `docs/quality-gates.md` as optional project-level context. Outside MD2PPT, rely on this skill's reference files and the minimum QA checklist below instead. |
+| Presentation Director docs | Treat `docs/pptx-master-workflow.md` and `docs/quality-gates.md` as optional project-level context. Outside Presentation Director, rely on this skill's reference files and the minimum QA checklist below instead. |
 
 Never include file paths in a generation prompt unless those files actually exist.
 
@@ -283,10 +283,11 @@ python3 scripts/presentation_director.py prompt --task "<short task slug>" --kin
 
 7. Only now call Codex Presentations.
 
-After v1 is generated, render and open the style review page, wait for `revision.ready` if the user chooses a revision, then use:
+After v1 is generated, render Director pages and open the style review page. Use the local Director server for click-to-submit behavior; opening `style-review.html` directly is only a static preview. Wait for `revision.ready` if the user chooses a revision, then use:
 
 ```bash
-python3 scripts/presentation_director.py render --task "<short task slug>" --open-page style-review
+python3 scripts/presentation_director.py render --task "<short task slug>"
+python3 scripts/presentation_director.py serve --task "<short task slug>" --open-page style-review
 python3 scripts/presentation_director.py wait --task "<short task slug>" --for revision
 python3 scripts/presentation_director.py prompt --task "<short task slug>" --kind revision
 ```
@@ -510,11 +511,13 @@ Read `references/prompt-templates.md` for ready-to-use prompts.
 
 ### Claude Step 7 — Render QA
 
-Full gate definitions inside MD2PPT: `docs/quality-gates.md`. If that file is unavailable, apply this minimum checklist before declaring done:
+Full gate definitions inside Presentation Director: `docs/quality-gates.md`. If that file is unavailable, apply this minimum checklist before declaring done:
 
 - [ ] Per-slide preview images rendered (or browser screenshot for HTML)
 - [ ] Contact sheet generated (PPTX) or browser full-screen test completed (HTML)
 - [ ] Layout JSON reviewed (overflow, font issues, spacing)
+- [ ] No text overlaps after rendering: title/subtitle/body/footer/page number/labels/connectors are visually separated
+- [ ] Long titles are safe after wrapping: wrapped titles do not cover subtitles, captions, or the body area
 - [ ] At least one "find issue → fix → re-render" cycle completed
 - [ ] Final output confirmed at `PPTX/<task-slug>/final/<deck-title>.pptx` or `PPTX/<task-slug>/final/<deck-title>.html`
 - [ ] For PPTX output, view-only HTML companion exists at `PPTX/<task-slug>/final/<deck-title>.html`

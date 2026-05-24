@@ -1,8 +1,8 @@
-# MD2PPT 项目上下文
+# Presentation Director 项目上下文
 
 ## 项目定位
 
-MD2PPT 是一个把主题、文章、知识文稿、书籍摘要或工程项目资料转成高质量演示文稿的工作流仓库。
+Presentation Director 是一个把主题、文章、知识文稿、书籍摘要或工程项目资料转成高质量演示文稿的工作流仓库。仓库早期名为 MD2PPT；以后统一用 Presentation Director 指代这个项目和流程。
 
 当前首选目标不是“快速导出一份能放映的幻灯片”，而是生成：
 
@@ -94,6 +94,16 @@ PPTX/<task-slug>/
 ```
 
 Codex Presentations 插件内部可能仍按插件规则使用 `outputs/<thread-id>/presentations/...` 作为 scratch workspace；但交给用户看的 brief、版本、逐页预览图、contact sheet、QA 摘要、最终 PPTX 和最终 HTML 分享版必须复制或保存到 `PPTX/<task-slug>/`。
+
+### Layout QA / No Overlap Gate
+
+任何 PPTX 生成或 targeted edit 都必须通过渲染级排版检查，而不是只通过代码、XML 或包结构检查：
+
+- 必须生成逐页预览图和 contact sheet，并把它们放入对应版本目录。
+- 必须检查标题、副标题、正文、页脚、页码、图表标签、连接线和卡片之间是否互相重叠或裁切。
+- 长标题必须预留换行高度；标题换行后不得压住副标题、小字说明或页面主体。
+- 发现重叠后必须修复并重新渲染受影响页面；QA summary 中要写明修复前问题、修复动作和复检结果。
+- 没有渲染证据和 no-overlap 检查结果时，不得把 PPTX 标记为完成。
 
 ### HTML Companion
 
