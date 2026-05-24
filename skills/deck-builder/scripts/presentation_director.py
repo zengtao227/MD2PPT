@@ -22,6 +22,7 @@ import re
 import secrets
 import shutil
 import sys
+import threading
 import time
 import webbrowser
 from dataclasses import dataclass
@@ -84,7 +85,7 @@ UI_COPY: dict[str, dict[str, str]] = {
         "no_risks": "未发现明显风险。",
         "no_sources": "未记录资料来源。可以在下面粘贴本地路径、网页 URL 或 Google Drive 地址。",
         "confirmed_title": "Brief confirmed",
-        "confirmed_message": "可以回到 Codex，agent 会检测 confirmed.ready 并开始生成。",
+        "confirmed_message": "确认已收到。你不需要回到聊天里回复；agent 会检测 confirmed.ready 并自动继续生成。",
         "invalid_token": "Missing or invalid confirmation token. Open the confirmation page and submit the form.",
         "default": "default",
         "user_selected": "user-selected",
@@ -114,7 +115,7 @@ UI_COPY: dict[str, dict[str, str]] = {
         "no_risks": "No obvious risks detected.",
         "no_sources": "No source material has been recorded. Add local paths, web URLs, or Google Drive links before generation.",
         "confirmed_title": "Brief confirmed",
-        "confirmed_message": "Return to Codex. The agent will detect confirmed.ready and start generation.",
+        "confirmed_message": "Confirmed. You do not need to reply in chat; the agent will detect confirmed.ready and continue automatically.",
         "invalid_token": "Missing or invalid confirmation token. Open the confirmation page and submit the form.",
         "default": "default",
         "user_selected": "user-selected",
@@ -144,7 +145,7 @@ UI_COPY: dict[str, dict[str, str]] = {
         "no_risks": "Keine offensichtlichen Risiken erkannt.",
         "no_sources": "Es wurden keine Quellen erfasst. Fügen Sie vor der Generierung lokale Pfade, Web-URLs oder Google-Drive-Links hinzu.",
         "confirmed_title": "Briefing bestätigt",
-        "confirmed_message": "Kehren Sie zu Codex zurück. Der Agent erkennt confirmed.ready und startet die Generierung.",
+        "confirmed_message": "Bestätigt. Sie müssen nicht im Chat antworten; der Agent erkennt confirmed.ready und fährt automatisch fort.",
         "invalid_token": "Fehlendes oder ungültiges Bestätigungstoken. Öffnen Sie die Bestätigungsseite und senden Sie das Formular ab.",
         "default": "Standard",
         "user_selected": "vom Benutzer gewählt",
@@ -174,7 +175,7 @@ UI_COPY: dict[str, dict[str, str]] = {
         "no_risks": "Aucun risque évident détecté.",
         "no_sources": "Aucune source n'a été enregistrée. Ajoutez des chemins locaux, des URL web ou des liens Google Drive avant la génération.",
         "confirmed_title": "Brief confirmé",
-        "confirmed_message": "Retournez dans Codex. L'agent détectera confirmed.ready et lancera la génération.",
+        "confirmed_message": "Confirmé. Vous n'avez pas besoin de répondre dans le chat; l'agent détectera confirmed.ready et continuera automatiquement.",
         "invalid_token": "Jeton de confirmation manquant ou invalide. Ouvrez la page de confirmation et envoyez le formulaire.",
         "default": "par défaut",
         "user_selected": "choisi par l'utilisateur",
@@ -204,7 +205,7 @@ UI_COPY: dict[str, dict[str, str]] = {
         "no_risks": "Nessun rischio evidente rilevato.",
         "no_sources": "Nessuna fonte registrata. Aggiungi percorsi locali, URL web o link Google Drive prima della generazione.",
         "confirmed_title": "Brief confermato",
-        "confirmed_message": "Torna a Codex. L'agente rileverà confirmed.ready e avvierà la generazione.",
+        "confirmed_message": "Confermato. Non serve rispondere in chat; l'agente rileverà confirmed.ready e continuerà automaticamente.",
         "invalid_token": "Token di conferma mancante o non valido. Apri la pagina di conferma e invia il modulo.",
         "default": "predefinito",
         "user_selected": "scelto dall'utente",
@@ -234,13 +235,189 @@ UI_COPY: dict[str, dict[str, str]] = {
         "no_risks": "No se detectaron riesgos evidentes.",
         "no_sources": "No se registraron fuentes. Añade rutas locales, URL web o enlaces de Google Drive antes de generar.",
         "confirmed_title": "Brief confirmado",
-        "confirmed_message": "Vuelve a Codex. El agente detectará confirmed.ready e iniciará la generación.",
+        "confirmed_message": "Confirmado. No necesitas responder en el chat; el agente detectará confirmed.ready y continuará automáticamente.",
         "invalid_token": "Token de confirmación ausente o no válido. Abre la página de confirmación y envía el formulario.",
         "default": "predeterminado",
         "user_selected": "seleccionado por el usuario",
         "unknown": "desconocido",
     },
 }
+ADDITIONAL_UI_COPY: dict[str, dict[str, str]] = {
+    "zh": {
+        "brief_gate": "简报确认门禁",
+        "confirmed_title": "简报已确认",
+        "invalid_token": "确认令牌缺失或无效。请打开确认页并提交表单。",
+        "default": "默认",
+        "user_selected": "用户选择",
+        "no_sources": "未记录资料来源。可以在下面填写本地路径、网页 URL 或 Google Drive 地址。",
+        "intake_topline": "Presentation Director",
+        "intake_title": "生成前信息收集",
+        "intake_intro": "先确认会影响 PPTX 质量的关键信息。每题都有默认推荐，也可以选择自定义。",
+        "source_material": "资料来源",
+        "source_paths_label": "资料路径 / 网页 / Google Drive 地址",
+        "source_paths_placeholder": "每行一个来源。例如：\n/Users/you/project/docs\nhttps://example.com/report\nhttps://drive.google.com/file/d/...\nhttps://docs.google.com/document/d/...",
+        "source_paths_meta": "可以填写本地文件夹、本地文件、普通网页 URL、Google Drive / Docs / Slides / Sheets 地址。Google Drive 地址会作为来源链接记录，后续由 agent 按权限读取或要求你授权。",
+        "topic_title_label": "主题 / 标题",
+        "extra_notes": "额外说明",
+        "extra_notes_placeholder": "例如必须保留的页面、禁用内容、特殊听众背景。",
+        "custom_placeholder": "输入你的自定义说明",
+        "next_visual": "下一步：视觉候选",
+        "visual_gate": "视觉方向门禁",
+        "visual_title": "选择第一版视觉方向",
+        "visual_intro": "这些候选会根据主题、PPT 类型和听众动态生成。它们借鉴 design-lock、ui-ux-pro-max、HTML deck/theme catalog 的做法，但最终仍交给 Codex Presentations 生成可编辑 PPTX。",
+        "current_topic": "当前主题",
+        "visual_notes": "视觉补充要求",
+        "visual_notes_placeholder": "例如：更像顶级咨询公司、更少卡片、背景更有层次、适合医学研究听众。",
+        "back_intake": "返回修改 intake",
+        "next_confirm": "下一步：汇总确认",
+        "best_for": "适合",
+        "inspiration": "借鉴",
+        "evidence_page": "证据页",
+        "style_review": "视觉复审",
+        "style_title": "视觉复审",
+        "style_intro": "基于当前最新版本 {version_name} 的 contact sheet 选择是否生成对比版本。不要复制 JSON，点击按钮即可。",
+        "current_version": "当前版本",
+        "missing_contact_sheet": "还没有找到 {path}。生成版本后刷新此页。",
+        "missing_qa_summary": "暂无 QA 摘要。",
+        "revision_count_title": "生成几个对比版本?",
+        "keep_current_version": "保持 v1，进入最终选择",
+        "one_revision": "生成一个对比版本",
+        "two_revisions": "生成两个对比版本",
+        "revision_notes_placeholder": "补充说明，例如：第 5 页架构图需要更清楚。",
+        "confirm_visual_choice": "确认视觉选择",
+        "version_compare": "版本比较",
+        "compare_title": "选择最终版本",
+        "choose_after_action": "选择后动作",
+        "final_notes_placeholder": "最终选择理由或仍需注意的问题。",
+        "confirm_final_version": "确认最终版本",
+        "continue_editing": "继续修改",
+        "choose_version": "选择 {version}",
+        "no_contact_sheet": "没有 contact sheet。",
+        "no_versions": "还没有可比较版本。请先生成 v1。",
+        "pptx_label": "PPTX",
+        "revision_saved_title": "修改选择已保存",
+        "revision_saved_message": "修改选择已收到。你不需要回到聊天里回复；agent 会检测 revision.ready 并自动生成对比版本。",
+        "final_selected_title": "最终版本已选择",
+        "final_selected_message": "最终版本选择已收到。你不需要回到聊天里回复；agent 会检测 final-selected.ready 并自动做最终交付。",
+        "nav_intake": "信息收集",
+        "nav_visual": "视觉方向",
+        "nav_style": "视觉复审",
+        "nav_compare": "版本比较",
+    },
+    "en": {
+        "intake_topline": "Presentation Director",
+        "intake_title": "Pre-Generation Intake",
+        "intake_intro": "Confirm the key details that affect PPTX quality. Each question has a recommended default, and you can choose a custom answer.",
+        "source_material": "Source Material",
+        "source_paths_label": "Source paths / web pages / Google Drive links",
+        "source_paths_placeholder": "One source per line. For example:\n/Users/you/project/docs\nhttps://example.com/report\nhttps://drive.google.com/file/d/...\nhttps://docs.google.com/document/d/...",
+        "source_paths_meta": "You can enter local folders, local files, regular web URLs, and Google Drive / Docs / Slides / Sheets links. Google Drive links are recorded as source links; the agent will read them according to permissions or ask for authorization.",
+        "topic_title_label": "Topic / title",
+        "extra_notes": "Additional Notes",
+        "extra_notes_placeholder": "For example: pages to preserve, forbidden content, or special audience context.",
+        "custom_placeholder": "Enter your custom note",
+        "next_visual": "Next: visual candidates",
+        "visual_gate": "Visual Inspiration Gate",
+        "visual_title": "Choose the First-Draft Visual Direction",
+        "visual_intro": "These candidates are generated from the topic, PPT type, and audience. They borrow from design-locks, ui-ux-pro-max, and HTML deck/theme catalog patterns, while Codex Presentations still creates the editable PPTX.",
+        "current_topic": "Current Topic",
+        "visual_notes": "Additional Visual Requirements",
+        "visual_notes_placeholder": "For example: more like a top-tier consulting deck, fewer cards, richer backgrounds, or suitable for a medical research audience.",
+        "back_intake": "Back to intake",
+        "next_confirm": "Next: summary confirmation",
+        "best_for": "Best for",
+        "inspiration": "Inspiration",
+        "evidence_page": "Evidence page",
+        "style_review": "Style Review",
+        "style_title": "Style Review",
+        "style_intro": "Use the contact sheet for the latest version {version_name} to decide whether to generate comparison versions. No JSON copying is needed; just click the button.",
+        "current_version": "Current Version",
+        "missing_contact_sheet": "Could not find {path}. Refresh this page after the version is generated.",
+        "missing_qa_summary": "No QA summary yet.",
+        "revision_count_title": "How many comparison versions should be generated?",
+        "keep_current_version": "Keep v1 and move to final selection",
+        "one_revision": "Generate one comparison version",
+        "two_revisions": "Generate two comparison versions",
+        "revision_notes_placeholder": "Add notes, for example: make the architecture diagram on slide 5 clearer.",
+        "confirm_visual_choice": "Confirm visual choice",
+        "version_compare": "Version Compare",
+        "compare_title": "Choose the Final Version",
+        "choose_after_action": "After Selection",
+        "final_notes_placeholder": "Reason for the final choice or remaining issues to watch.",
+        "confirm_final_version": "Confirm final version",
+        "continue_editing": "Continue editing",
+        "choose_version": "Choose {version}",
+        "no_contact_sheet": "No contact sheet found.",
+        "no_versions": "No comparable versions yet. Generate v1 first.",
+        "pptx_label": "PPTX",
+        "revision_saved_title": "Revision saved",
+        "revision_saved_message": "Revision choices received. You do not need to reply in chat; the agent will detect revision.ready and generate comparison versions automatically.",
+        "final_selected_title": "Final version selected",
+        "final_selected_message": "Final version selection received. You do not need to reply in chat; the agent will detect final-selected.ready and complete the final delivery automatically.",
+        "nav_intake": "Intake",
+        "nav_visual": "Visual Direction",
+        "nav_style": "Style Review",
+        "nav_compare": "Compare",
+    },
+    "de": {
+        "intake_topline": "Presentation Director",
+        "intake_title": "Informationen vor der Generierung",
+        "intake_intro": "Bestätigen Sie zuerst die wichtigsten Angaben, die die PPTX-Qualität beeinflussen. Jede Frage hat eine empfohlene Standardeinstellung; Sie können auch eine eigene Antwort wählen.",
+        "source_material": "Quellenmaterial",
+        "source_paths_label": "Quellenpfade / Webseiten / Google-Drive-Links",
+        "source_paths_placeholder": "Eine Quelle pro Zeile. Zum Beispiel:\n/Users/you/project/docs\nhttps://example.com/report\nhttps://drive.google.com/file/d/...\nhttps://docs.google.com/document/d/...",
+        "source_paths_meta": "Sie können lokale Ordner, lokale Dateien, normale Web-URLs und Google Drive / Docs / Slides / Sheets-Links eintragen. Google-Drive-Links werden als Quellenlinks gespeichert; der Agent liest sie je nach Berechtigung oder fordert eine Autorisierung an.",
+        "topic_title_label": "Thema / Titel",
+        "extra_notes": "Zusätzliche Hinweise",
+        "extra_notes_placeholder": "Zum Beispiel: Seiten, die erhalten bleiben müssen, verbotene Inhalte oder besonderer Kontext zur Zielgruppe.",
+        "custom_placeholder": "Eigene Anmerkung eingeben",
+        "next_visual": "Weiter: visuelle Kandidaten",
+        "visual_gate": "Tor für visuelle Richtung",
+        "visual_title": "Visuelle Richtung für den ersten Entwurf wählen",
+        "visual_intro": "Diese Kandidaten werden aus Thema, PPT-Typ und Zielgruppe abgeleitet. Sie nutzen Muster aus design-locks, ui-ux-pro-max und HTML deck/theme catalogs; Codex Presentations erstellt daraus weiterhin eine editierbare PPTX.",
+        "current_topic": "Aktuelles Thema",
+        "visual_notes": "Zusätzliche visuelle Anforderungen",
+        "visual_notes_placeholder": "Zum Beispiel: näher an einer Top-Consulting-Präsentation, weniger Karten, mehr Tiefe im Hintergrund oder passend für ein medizinisches Forschungspublikum.",
+        "back_intake": "Zurück zur Informationsabfrage",
+        "next_confirm": "Weiter: Zusammenfassung bestätigen",
+        "best_for": "Geeignet für",
+        "inspiration": "Inspiration",
+        "evidence_page": "Evidenzseite",
+        "style_review": "Visuelle Prüfung",
+        "style_title": "Visuelle Prüfung",
+        "style_intro": "Nutzen Sie das Contact Sheet der neuesten Version {version_name}, um zu entscheiden, ob Vergleichsversionen erzeugt werden sollen. Kein JSON-Kopieren nötig; klicken Sie einfach auf die Schaltfläche.",
+        "current_version": "Aktuelle Version",
+        "missing_contact_sheet": "{path} wurde noch nicht gefunden. Aktualisieren Sie diese Seite nach der Versionserstellung.",
+        "missing_qa_summary": "Noch keine QA-Zusammenfassung vorhanden.",
+        "revision_count_title": "Wie viele Vergleichsversionen sollen erzeugt werden?",
+        "keep_current_version": "v1 behalten und zur finalen Auswahl gehen",
+        "one_revision": "Eine Vergleichsversion erzeugen",
+        "two_revisions": "Zwei Vergleichsversionen erzeugen",
+        "revision_notes_placeholder": "Zusätzliche Hinweise, zum Beispiel: Das Architekturdiagramm auf Folie 5 soll klarer werden.",
+        "confirm_visual_choice": "Visuelle Auswahl bestätigen",
+        "version_compare": "Versionsvergleich",
+        "compare_title": "Finale Version wählen",
+        "choose_after_action": "Aktion nach der Auswahl",
+        "final_notes_placeholder": "Begründung der finalen Auswahl oder verbleibende Punkte.",
+        "confirm_final_version": "Finale Version bestätigen",
+        "continue_editing": "Weiter bearbeiten",
+        "choose_version": "{version} wählen",
+        "no_contact_sheet": "Kein Contact Sheet gefunden.",
+        "no_versions": "Es gibt noch keine vergleichbaren Versionen. Erzeugen Sie zuerst v1.",
+        "pptx_label": "PPTX",
+        "revision_saved_title": "Überarbeitung gespeichert",
+        "revision_saved_message": "Die Überarbeitungsauswahl wurde empfangen. Sie müssen nicht im Chat antworten; der Agent erkennt revision.ready und erzeugt automatisch Vergleichsversionen.",
+        "final_selected_title": "Finale Version ausgewählt",
+        "final_selected_message": "Die finale Versionsauswahl wurde empfangen. Sie müssen nicht im Chat antworten; der Agent erkennt final-selected.ready und erstellt automatisch die finale Lieferung.",
+        "nav_intake": "Informationsabfrage",
+        "nav_visual": "Visuelle Richtung",
+        "nav_style": "Visuelle Prüfung",
+        "nav_compare": "Vergleich",
+    },
+}
+
+for language, copy_items in ADDITIONAL_UI_COPY.items():
+    UI_COPY.setdefault(language, {}).update(copy_items)
 QUESTION_TITLE_L10N: dict[str, dict[str, str]] = {
     "en": {
         "deck_type": "PPT Type",
@@ -480,21 +657,176 @@ CHOICE_LABEL_L10N: dict[str, dict[str, dict[str, str]]] = {
         },
     },
 }
+ADDITIONAL_QUESTION_TITLE_L10N: dict[str, dict[str, str]] = {
+    "en": {
+        "palette_direction": "Palette Direction",
+        "structure_direction": "Structure Rhythm",
+        "visual_expression": "Visual Expression",
+        "image_strategy": "Image Strategy",
+        "logo_strategy": "Logo / Brand Presence",
+    },
+    "de": {
+        "palette_direction": "Farbpalette",
+        "structure_direction": "Strukturrhythmus",
+        "visual_expression": "Visueller Ausdruck",
+        "image_strategy": "Bildstrategie",
+        "logo_strategy": "Logo / Markenpräsenz",
+    },
+}
+
+QUESTION_PROMPT_L10N: dict[str, dict[str, str]] = {
+    "en": {
+        "deck_type": "What kind of PPT are you creating?",
+        "research_strategy": "If the material is incomplete, how should research material be gathered first?",
+        "audience": "Who is the main audience for this PPT?",
+        "goal": "What is the main goal of this PPT?",
+        "source_boundary": "How should source material be used?",
+        "content_language": "What language should the slide body use?",
+        "output_constraints": "What are the slide count and presentation duration constraints?",
+        "logo_policy": "How should logos and brand assets be handled?",
+        "image_policy": "Should AI-generated images be allowed?",
+        "visual_freedom": "How should the first-draft visual direction be handled?",
+        "reference_deck": "Do you have a reference deck or style sample?",
+        "palette_direction": "Should the palette direction change?",
+        "structure_direction": "Should the structure rhythm change?",
+        "visual_expression": "Should the visual expression change?",
+        "image_strategy": "How should images and visual assets be adjusted?",
+        "logo_strategy": "How should logos and brand presence be adjusted?",
+    },
+    "de": {
+        "deck_type": "Welche Art von PPT soll erstellt werden?",
+        "research_strategy": "Wenn das Material unvollständig ist, wie sollen zuerst Recherchematerialien beschafft werden?",
+        "audience": "Für wen ist diese PPT hauptsächlich gedacht?",
+        "goal": "Was ist das Hauptziel dieser PPT?",
+        "source_boundary": "Wie soll das Quellenmaterial verwendet werden?",
+        "content_language": "Welche Sprache soll der Folientext verwenden?",
+        "output_constraints": "Welche Vorgaben gibt es für Folienzahl und Vortragsdauer?",
+        "logo_policy": "Wie sollen Logos und Markenmaterial behandelt werden?",
+        "image_policy": "Sollen KI-generierte Bilder erlaubt sein?",
+        "visual_freedom": "Wie soll die visuelle Richtung des ersten Entwurfs behandelt werden?",
+        "reference_deck": "Gibt es ein Referenzdeck oder Stilbeispiele?",
+        "palette_direction": "Soll sich die Farbpalette ändern?",
+        "structure_direction": "Soll sich der Strukturrhythmus ändern?",
+        "visual_expression": "Soll sich der visuelle Ausdruck ändern?",
+        "image_strategy": "Wie sollen Bilder und visuelle Materialien angepasst werden?",
+        "logo_strategy": "Wie sollen Logos und Markenpräsenz angepasst werden?",
+    },
+}
+
+ADDITIONAL_CHOICE_LABEL_L10N: dict[str, dict[str, dict[str, str]]] = {
+    "en": {
+        "palette_direction": {
+            "keep": "Keep current",
+            "warm-editorial": "Warm paper-like / editorial",
+            "engineering-blue-gray": "Engineering blue-gray / technical",
+            "high-contrast-pitch": "High-contrast / pitch style",
+            "brand-boost": "Strengthen brand colors",
+            "custom": "Custom",
+        },
+        "structure_direction": {
+            "keep": "Keep current",
+            "stronger-story": "Stronger story rhythm",
+            "more-analytical": "More analytical",
+            "more-architecture": "More architecture / system diagrams",
+            "more-product-demo": "More product-launch / demo feel",
+            "denser-internal": "Denser internal review style",
+            "custom": "Custom",
+        },
+        "visual_expression": {
+            "keep": "Keep current",
+            "more-premium": "More premium / more designed",
+            "more-restrained": "More restrained / less decorative",
+            "less-cards": "Fewer cards, more open composition",
+            "stronger-evidence": "Stronger evidence-led storytelling",
+            "custom": "Custom",
+        },
+        "image_strategy": {
+            "keep": "Keep current",
+            "fewer-decorative": "Use fewer decorative images",
+            "more-ai-concept": "Add AI concept imagery",
+            "official-only": "Use only real screenshots / official assets",
+            "stronger-cover-section": "Strengthen cover or section visuals",
+            "custom": "Custom",
+        },
+        "logo_strategy": {
+            "keep": "Keep current",
+            "cover-final-only": "Keep logos only on cover and final slides",
+            "footer-brand": "Strengthen footer branding",
+            "partner-logo-page": "Add partner / school / company logo page",
+            "remove-all": "Remove all logos",
+            "custom": "Custom",
+        },
+    },
+    "de": {
+        "palette_direction": {
+            "keep": "Aktuell beibehalten",
+            "warm-editorial": "Warmer Papierlook / Editorial",
+            "engineering-blue-gray": "Engineering-Blaugrau / technisch",
+            "high-contrast-pitch": "Hoher Kontrast / Pitch-Stil",
+            "brand-boost": "Markenfarben stärken",
+            "custom": "Benutzerdefiniert",
+        },
+        "structure_direction": {
+            "keep": "Aktuell beibehalten",
+            "stronger-story": "Stärkerer Story-Rhythmus",
+            "more-analytical": "Analytischer",
+            "more-architecture": "Mehr Architektur- / Systemdiagramme",
+            "more-product-demo": "Mehr Produktlaunch- / Demo-Gefühl",
+            "denser-internal": "Dichterer Stil für interne Reviews",
+            "custom": "Benutzerdefiniert",
+        },
+        "visual_expression": {
+            "keep": "Aktuell beibehalten",
+            "more-premium": "Hochwertiger / stärker gestaltet",
+            "more-restrained": "Zurückhaltender / weniger dekorativ",
+            "less-cards": "Weniger Karten, offenere Komposition",
+            "stronger-evidence": "Stärker evidenzgeführtes Storytelling",
+            "custom": "Benutzerdefiniert",
+        },
+        "image_strategy": {
+            "keep": "Aktuell beibehalten",
+            "fewer-decorative": "Weniger dekorative Bilder verwenden",
+            "more-ai-concept": "KI-Konzeptbilder ergänzen",
+            "official-only": "Nur echte Screenshots / offizielle Materialien verwenden",
+            "stronger-cover-section": "Titel- oder Kapitelvisuals stärken",
+            "custom": "Benutzerdefiniert",
+        },
+        "logo_strategy": {
+            "keep": "Aktuell beibehalten",
+            "cover-final-only": "Logos nur auf Titel- und Schlussfolie behalten",
+            "footer-brand": "Footer-Branding stärken",
+            "partner-logo-page": "Partner- / Schul- / Unternehmenslogo-Seite hinzufügen",
+            "remove-all": "Alle Logos entfernen",
+            "custom": "Benutzerdefiniert",
+        },
+    },
+}
+
+for language, title_items in ADDITIONAL_QUESTION_TITLE_L10N.items():
+    QUESTION_TITLE_L10N.setdefault(language, {}).update(title_items)
+
+for language, label_groups in ADDITIONAL_CHOICE_LABEL_L10N.items():
+    CHOICE_LABEL_L10N.setdefault(language, {}).update(label_groups)
+
 GENERIC_VISUAL_FIELD_L10N: dict[str, dict[str, str]] = {
     "en": {
         "summary": "Selected visual direction based on the topic, audience, and deck type.",
+        "best_for": "A fitting direction for this topic, audience, and deck type.",
         "background": "Use a coherent background system that matches the selected palette.",
         "layout": "Use slide layouts that fit the proof objects and presentation rhythm.",
         "chart": "Use clear evidence-led charts with direct labels.",
         "image_strategy": "Use verified source material; use AI imagery only when authorized.",
+        "inspiration": "Use the selected direction as inspiration, not as a rigid template.",
         "risk": "Keep source labels, evidence strength, and layout QA visible.",
     },
     "de": {
         "summary": "Ausgewählte visuelle Richtung auf Basis von Thema, Zielgruppe und Deck-Typ.",
+        "best_for": "Eine passende Richtung für dieses Thema, diese Zielgruppe und diesen Deck-Typ.",
         "background": "Ein konsistentes Hintergrundsystem verwenden, das zur gewählten Farbpalette passt.",
         "layout": "Folienlayouts an Beweisobjekte und Präsentationsrhythmus anpassen.",
         "chart": "Klare, evidenzorientierte Diagramme mit direkten Beschriftungen verwenden.",
         "image_strategy": "Geprüftes Quellenmaterial verwenden; KI-Bilder nur mit Freigabe einsetzen.",
+        "inspiration": "Die gewählte Richtung als Inspiration nutzen, nicht als starre Vorlage.",
         "risk": "Quellenhinweise, Evidenzstärke und Layout-QA sichtbar halten.",
     },
 }
@@ -852,21 +1184,59 @@ def ui_language_for_task(task_dir: Path) -> str:
 
 
 def t(ui_language: str, key: str) -> str:
-    return UI_COPY.get(ui_language, UI_COPY["zh"]).get(key, UI_COPY["zh"].get(key, key))
+    language_copy: dict[str, str] = UI_COPY.get(ui_language, {})
+    if key in language_copy:
+        return language_copy[key]
+    if ui_language != "zh" and key in UI_COPY["en"]:
+        return UI_COPY["en"][key]
+    return UI_COPY["zh"].get(key, key)
 
 
 def localized_question_title(question: Question, ui_language: str) -> str:
-    return QUESTION_TITLE_L10N.get(ui_language, {}).get(question.key, question.title)
+    if ui_language == "zh":
+        return question.title
+    return (
+        QUESTION_TITLE_L10N.get(ui_language, {}).get(question.key)
+        or QUESTION_TITLE_L10N.get("en", {}).get(question.key)
+        or humanize_key(question.key)
+    )
+
+
+def localized_question_prompt(question: Question, ui_language: str) -> str:
+    if ui_language == "zh":
+        return question.prompt
+    return (
+        QUESTION_PROMPT_L10N.get(ui_language, {}).get(question.key)
+        or QUESTION_PROMPT_L10N.get("en", {}).get(question.key)
+        or ""
+    )
+
+
+def humanize_key(value: str) -> str:
+    return value.replace("_", " ").replace("-", " ").strip().title()
+
+
+def localized_choice_label_value(question: Question, value: str, fallback: str, ui_language: str) -> str:
+    if ui_language == "zh":
+        return fallback
+    return (
+        CHOICE_LABEL_L10N.get(ui_language, {}).get(question.key, {}).get(value)
+        or CHOICE_LABEL_L10N.get("en", {}).get(question.key, {}).get(value)
+        or humanize_key(value)
+    )
 
 
 def localized_choice_label(question: Question, item: JsonDict, ui_language: str) -> str:
     value: str = str(item.get("value", ""))
     if "custom" in item:
         return str(item.get("custom", item.get("label", "")))
-    return CHOICE_LABEL_L10N.get(ui_language, {}).get(question.key, {}).get(
-        value,
-        str(item.get("label", "")),
-    )
+    return localized_choice_label_value(question, value, str(item.get("label", "")), ui_language)
+
+
+def localized_choice_description(question: Question, choice: Choice, ui_language: str) -> str:
+    if ui_language == "zh":
+        return choice.description
+    return ""
 
 
 def localized_source(source_name: str, ui_language: str) -> str:
@@ -1452,7 +1822,7 @@ def html_page(title: str, body: str, ui_language: str = "zh") -> str:
 """
 
 
-def question_section(question: Question, current: str = "") -> str:
+def question_section(question: Question, current: str = "", ui_language: str = "zh") -> str:
     current_value: str = current or question.default
     cards: list[str] = []
     for choice in question.choices:
@@ -1461,19 +1831,21 @@ def question_section(question: Question, current: str = "") -> str:
         if choice.value == "custom":
             custom_input = (
                 f'<input type="text" name="{question.key}__custom" '
-                f'placeholder="输入你的自定义说明">'
+                f'placeholder="{html.escape(t(ui_language, "custom_placeholder"))}">'
             )
+        description: str = localized_choice_description(question, choice, ui_language)
+        description_html: str = f"<p>{html.escape(description)}</p>" if description else ""
         cards.append(
             f"""<label class="option">
   <input type="radio" name="{question.key}" value="{html.escape(choice.value)}"{checked}>
-  <strong>{html.escape(choice.label)}</strong>
-  <p>{html.escape(choice.description)}</p>
+  <strong>{html.escape(localized_choice_label_value(question, choice.value, choice.label, ui_language))}</strong>
+  {description_html}
   {custom_input}
 </label>"""
         )
     return f"""<section class="section">
-  <h2>{html.escape(question.title)}</h2>
-  <p>{html.escape(question.prompt)}</p>
+  <h2>{html.escape(localized_question_title(question, ui_language))}</h2>
+  <p>{html.escape(localized_question_prompt(question, ui_language))}</p>
   <div class="grid">
     {''.join(cards)}
   </div>
@@ -1817,40 +2189,42 @@ def write_share_html(
 def render_intake(task_dir: Path) -> str:
     draft: JsonDict = read_json(task_dir / "brief-draft.json")
     current: JsonDict = read_json(task_dir / "intake-selection.json", draft)
+    ui_language: str = ui_language_from_brief(current)
     selections: JsonDict = current.get("selections", {})
     current_sources: Any = current.get("sources", draft.get("sources", []))
-    source_list: str = render_sources(current_sources)
+    source_list: str = render_sources(current_sources, ui_language)
     sources_text: str = format_sources_text(current_sources)
-    body: str = f"""<div class="topline">Presentation Director</div>
-<h1>生成前信息收集</h1>
-<p>先确认会影响 PPTX 质量的关键信息。每题都有默认推荐，也可以选择自定义。</p>
+    body: str = f"""<div class="topline">{html.escape(t(ui_language, "intake_topline"))}</div>
+<h1>{html.escape(t(ui_language, "intake_title"))}</h1>
+<p>{html.escape(t(ui_language, "intake_intro"))}</p>
 <section class="section">
-  <h2>资料来源</h2>
+  <h2>{html.escape(t(ui_language, "source_material"))}</h2>
   {source_list}
-  <label>资料路径 / 网页 / Google Drive 地址
-    <textarea name="sources_text" form="intake-form" placeholder="每行一个来源。例如：&#10;/Users/you/project/docs&#10;https://example.com/report&#10;https://drive.google.com/file/d/...&#10;https://docs.google.com/document/d/...">{html.escape(sources_text)}</textarea>
+  <label>{html.escape(t(ui_language, "source_paths_label"))}
+    <textarea name="sources_text" form="intake-form" placeholder="{html.escape(t(ui_language, "source_paths_placeholder"))}">{html.escape(sources_text)}</textarea>
   </label>
-  <p class="meta">可以填写本地文件夹、本地文件、普通网页 URL、Google Drive / Docs / Slides / Sheets 地址。Google Drive 地址会作为来源链接记录，后续由 agent 按权限读取或要求你授权。</p>
-  <label>主题 / 标题
+  <p class="meta">{html.escape(t(ui_language, "source_paths_meta"))}</p>
+  <label>{html.escape(t(ui_language, "topic_title_label"))}
     <input type="text" name="topic" form="intake-form" value="{html.escape(str(current.get("topic", draft.get("topic", ""))))}">
   </label>
 </section>
 <form method="post" action="/api/intake" id="intake-form">
-  {''.join(question_section(question, selections.get(question.key, {}).get("value", "")) for question in INTAKE_QUESTIONS)}
+  {''.join(question_section(question, selections.get(question.key, {}).get("value", ""), ui_language) for question in INTAKE_QUESTIONS)}
   <section class="section">
-    <h2>额外说明</h2>
-    <textarea name="notes" placeholder="例如必须保留的页面、禁用内容、特殊听众背景。">{html.escape(str(current.get("notes", "")))}</textarea>
+    <h2>{html.escape(t(ui_language, "extra_notes"))}</h2>
+    <textarea name="notes" placeholder="{html.escape(t(ui_language, "extra_notes_placeholder"))}">{html.escape(str(current.get("notes", "")))}</textarea>
   </section>
   <div class="actions">
-    <button type="submit">下一步：视觉候选</button>
+    <button type="submit">{html.escape(t(ui_language, "next_visual"))}</button>
   </div>
 </form>"""
-    return html_page("Presentation Director Intake", body)
+    return html_page(t(ui_language, "intake_title"), body, ui_language)
 
 
 def render_visual_inspiration(task_dir: Path) -> str:
     draft: JsonDict = read_json(task_dir / "brief-draft.json")
     selected: JsonDict = read_json(task_dir / "intake-selection.json", draft)
+    ui_language: str = ui_language_from_brief(selected)
     topic: str = str(selected.get("topic", draft.get("topic", "")))
     selections: JsonDict = selected.get("selections", {})
     candidates: tuple[VisualCandidate, ...] = build_visual_candidates(topic, selections)
@@ -1861,14 +2235,14 @@ def render_visual_inspiration(task_dir: Path) -> str:
         else candidates[0].key
     )
     candidate_cards: list[str] = [
-        render_visual_candidate_card(candidate, current_key == candidate.key)
+        render_visual_candidate_card(candidate, current_key == candidate.key, ui_language)
         for candidate in candidates
     ]
-    body: str = f"""<div class="topline">Visual Inspiration Gate</div>
-<h1>选择第一版视觉方向</h1>
-<p>这些候选会根据主题、PPT 类型和听众动态生成。它们借鉴 design-lock、ui-ux-pro-max、HTML deck/theme catalog 的做法，但最终仍交给 Codex Presentations 生成可编辑 PPTX。</p>
+    body: str = f"""<div class="topline">{html.escape(t(ui_language, "visual_gate"))}</div>
+<h1>{html.escape(t(ui_language, "visual_title"))}</h1>
+<p>{html.escape(t(ui_language, "visual_intro"))}</p>
 <section class="section">
-  <h2>当前主题</h2>
+  <h2>{html.escape(t(ui_language, "current_topic"))}</h2>
   <p><strong>{html.escape(topic)}</strong></p>
 </section>
 <form method="post" action="/api/visual-inspiration">
@@ -1876,19 +2250,20 @@ def render_visual_inspiration(task_dir: Path) -> str:
     {''.join(candidate_cards)}
   </div>
   <section class="section">
-    <h2>视觉补充要求</h2>
-    <textarea name="visual_notes" placeholder="例如：更像顶级咨询公司、更少卡片、背景更有层次、适合医学研究听众。">{html.escape(str(visual_direction.get("notes", "") if isinstance(visual_direction, dict) else ""))}</textarea>
+    <h2>{html.escape(t(ui_language, "visual_notes"))}</h2>
+    <textarea name="visual_notes" placeholder="{html.escape(t(ui_language, "visual_notes_placeholder"))}">{html.escape(str(visual_direction.get("notes", "") if isinstance(visual_direction, dict) else ""))}</textarea>
   </section>
   <div class="actions">
-    <a class="button secondary" href="/intake">返回修改 intake</a>
-    <button type="submit">下一步：汇总确认</button>
+    <a class="button secondary" href="/intake">{html.escape(t(ui_language, "back_intake"))}</a>
+    <button type="submit">{html.escape(t(ui_language, "next_confirm"))}</button>
   </div>
 </form>"""
-    return html_page("Presentation Director Visual Inspiration", body)
+    return html_page(t(ui_language, "visual_title"), body, ui_language)
 
 
-def render_visual_candidate_card(candidate: VisualCandidate, checked: bool) -> str:
+def render_visual_candidate_card(candidate: VisualCandidate, checked: bool, ui_language: str = "zh") -> str:
     is_checked: str = " checked" if checked else ""
+    candidate_json: JsonDict = visual_candidate_to_json(candidate)
     swatches: str = "".join(
         f'<span class="swatch-preview" style="background:{html.escape(color)}"></span>'
         for color in candidate.palette
@@ -1900,7 +2275,7 @@ def render_visual_candidate_card(candidate: VisualCandidate, checked: bool) -> s
     return f"""<label class="option candidate">
   <input type="radio" name="visual_candidate" value="{html.escape(candidate.key)}"{is_checked}>
   <strong>{html.escape(candidate.name)}</strong>
-  <p>{html.escape(candidate.summary)}</p>
+  <p>{html.escape(localized_visual_field(candidate_json, "summary", ui_language))}</p>
   <div class="swatches-preview">{swatches}</div>
   <div class="mini-slides" aria-hidden="true">
     <div class="mini-slide" style="background:{html.escape(bg_color)}; color:{html.escape(ink_color)}">
@@ -1908,7 +2283,7 @@ def render_visual_candidate_card(candidate: VisualCandidate, checked: bool) -> s
       <span style="background:{html.escape(accent)}"></span>
     </div>
     <div class="mini-slide" style="background:#fff; color:#1f2937">
-      <strong>Evidence page</strong>
+      <strong>{html.escape(t(ui_language, "evidence_page"))}</strong>
       <div class="mini-bars">
         <i style="width:86%; background:{html.escape(accent)}"></i>
         <i style="width:62%; background:{html.escape(accent_2)}"></i>
@@ -1916,11 +2291,11 @@ def render_visual_candidate_card(candidate: VisualCandidate, checked: bool) -> s
       </div>
     </div>
   </div>
-  <p><strong>适合：</strong>{html.escape(candidate.best_for)}</p>
-  <p><strong>背景：</strong>{html.escape(candidate.background)}</p>
-  <p><strong>图表：</strong>{html.escape(candidate.chart)}</p>
-  <p><strong>借鉴：</strong>{html.escape(candidate.inspiration)}</p>
-  <p class="meta"><strong>风险：</strong>{html.escape(candidate.risk)}</p>
+  <p><strong>{html.escape(t(ui_language, "best_for"))}:</strong> {html.escape(localized_visual_field(candidate_json, "best_for", ui_language))}</p>
+  <p><strong>{html.escape(t(ui_language, "background"))}:</strong> {html.escape(localized_visual_field(candidate_json, "background", ui_language))}</p>
+  <p><strong>{html.escape(t(ui_language, "chart"))}:</strong> {html.escape(localized_visual_field(candidate_json, "chart", ui_language))}</p>
+  <p><strong>{html.escape(t(ui_language, "inspiration"))}:</strong> {html.escape(localized_visual_field(candidate_json, "inspiration", ui_language))}</p>
+  <p class="meta"><strong>{html.escape(t(ui_language, "risk"))}:</strong> {html.escape(localized_visual_field(candidate_json, "risk", ui_language))}</p>
 </label>"""
 
 
@@ -2027,6 +2402,7 @@ def render_confirm(task_dir: Path) -> str:
 
 
 def render_style_review(task_dir: Path) -> str:
+    ui_language: str = ui_language_for_task(task_dir)
     version_name: str = latest_review_version(task_dir)
     version_dir: Path = task_dir / version_name
     contact_sheet: Path = version_dir / "contact-sheet.png"
@@ -2035,33 +2411,33 @@ def render_style_review(task_dir: Path) -> str:
     image_html: str = (
         f'<img class="contact-sheet" src="/static/{html.escape(version_name)}/contact-sheet.png" alt="{html.escape(version_name)} contact sheet">'
         if contact_sheet.exists()
-        else f"<p class='risk'>还没有找到 <code>{html.escape(version_name)}/contact-sheet.png</code>。生成版本后刷新此页。</p>"
+        else f"<p class='risk'>{html.escape(t(ui_language, 'missing_contact_sheet').format(path=f'{version_name}/contact-sheet.png'))}</p>"
     )
-    qa_text: str = qa_summary.read_text(encoding="utf-8") if qa_summary.exists() else "暂无 QA 摘要。"
-    body: str = f"""<div class="topline">Style Review</div>
-<h1>视觉复审</h1>
-<p>基于当前最新版本 <strong>{html.escape(version_name)}</strong> 的 contact sheet 选择是否生成对比版本。不要复制 JSON，点击按钮即可。</p>
+    qa_text: str = qa_summary.read_text(encoding="utf-8") if qa_summary.exists() else t(ui_language, "missing_qa_summary")
+    body: str = f"""<div class="topline">{html.escape(t(ui_language, "style_review"))}</div>
+<h1>{html.escape(t(ui_language, "style_title"))}</h1>
+<p>{html.escape(t(ui_language, "style_intro").format(version_name=version_name))}</p>
 <section class="section">
-  <h2>当前版本</h2>
+  <h2>{html.escape(t(ui_language, "current_version"))}</h2>
   {image_html}
-  <p>PPTX: <code>{html.escape(str(pptx_path))}</code></p>
+  <p>{html.escape(t(ui_language, "pptx_label"))}: <code>{html.escape(str(pptx_path))}</code></p>
   <pre>{html.escape(qa_text[:2400])}</pre>
 </section>
 <form method="post" action="/api/revision">
   <input type="hidden" name="base_version" value="{html.escape(version_name)}">
-  {''.join(question_section(group) for group in REVISION_GROUPS)}
+  {''.join(question_section(group, ui_language=ui_language) for group in REVISION_GROUPS)}
   <section class="section">
-    <h2>生成几个对比版本?</h2>
-    <label class="option"><input type="radio" name="revision_count" value="0"> 保持 v1，进入最终选择</label>
-    <label class="option"><input type="radio" name="revision_count" value="1" checked> 生成一个对比版本</label>
-    <label class="option"><input type="radio" name="revision_count" value="2"> 生成两个对比版本</label>
-    <textarea name="notes" placeholder="补充说明，例如：第 5 页架构图需要更清楚。"></textarea>
+    <h2>{html.escape(t(ui_language, "revision_count_title"))}</h2>
+    <label class="option"><input type="radio" name="revision_count" value="0"> {html.escape(t(ui_language, "keep_current_version"))}</label>
+    <label class="option"><input type="radio" name="revision_count" value="1" checked> {html.escape(t(ui_language, "one_revision"))}</label>
+    <label class="option"><input type="radio" name="revision_count" value="2"> {html.escape(t(ui_language, "two_revisions"))}</label>
+    <textarea name="notes" placeholder="{html.escape(t(ui_language, "revision_notes_placeholder"))}"></textarea>
   </section>
   <div class="actions">
-    <button type="submit">确认视觉选择</button>
+    <button type="submit">{html.escape(t(ui_language, "confirm_visual_choice"))}</button>
   </div>
 </form>"""
-    return html_page("Presentation Director Style Review", body)
+    return html_page(t(ui_language, "style_title"), body, ui_language)
 
 
 def apply_revision_request(form: dict[str, list[str]]) -> JsonDict:
@@ -2090,6 +2466,7 @@ def apply_revision_request(form: dict[str, list[str]]) -> JsonDict:
 
 
 def render_compare(task_dir: Path) -> str:
+    ui_language: str = ui_language_for_task(task_dir)
     version_cards: list[str] = []
     for version in ("v1", "v2", "v3"):
         version_dir: Path = task_dir / version
@@ -2101,34 +2478,34 @@ def render_compare(task_dir: Path) -> str:
         image_html: str = (
             f'<img class="contact-sheet" src="/static/{version}/contact-sheet.png" alt="{version} contact sheet">'
             if contact_sheet.exists()
-            else "<p class='risk'>没有 contact sheet。</p>"
+            else f"<p class='risk'>{html.escape(t(ui_language, 'no_contact_sheet'))}</p>"
         )
-        qa_text: str = qa_summary.read_text(encoding="utf-8") if qa_summary.exists() else "暂无 QA 摘要。"
+        qa_text: str = qa_summary.read_text(encoding="utf-8") if qa_summary.exists() else t(ui_language, "missing_qa_summary")
         version_cards.append(
             f"""<section class="section">
   <h2>{html.escape(version.upper())}</h2>
   {image_html}
-  <p>PPTX: <code>{html.escape(str(pptx_path))}</code></p>
+  <p>{html.escape(t(ui_language, "pptx_label"))}: <code>{html.escape(str(pptx_path))}</code></p>
   <pre>{html.escape(qa_text[:1600])}</pre>
-  <label class="option"><input type="radio" name="selected_version" value="{html.escape(version)}"> 选择 {html.escape(version.upper())}</label>
+  <label class="option"><input type="radio" name="selected_version" value="{html.escape(version)}"> {html.escape(t(ui_language, "choose_version").format(version=version.upper()))}</label>
 </section>"""
         )
     if not version_cards:
-        version_cards.append("<p class='risk'>还没有可比较版本。请先生成 v1。</p>")
-    body: str = f"""<div class="topline">Version Compare</div>
-<h1>选择最终版本</h1>
+        version_cards.append(f"<p class='risk'>{html.escape(t(ui_language, 'no_versions'))}</p>")
+    body: str = f"""<div class="topline">{html.escape(t(ui_language, "version_compare"))}</div>
+<h1>{html.escape(t(ui_language, "compare_title"))}</h1>
 <form method="post" action="/api/final-selection">
   {''.join(version_cards)}
   <section class="section">
-    <h2>选择后动作</h2>
-    <textarea name="notes" placeholder="最终选择理由或仍需注意的问题。"></textarea>
+    <h2>{html.escape(t(ui_language, "choose_after_action"))}</h2>
+    <textarea name="notes" placeholder="{html.escape(t(ui_language, "final_notes_placeholder"))}"></textarea>
   </section>
   <div class="actions">
-    <button type="submit">确认最终版本</button>
-    <a class="button secondary" href="/style-review">继续修改</a>
+    <button type="submit">{html.escape(t(ui_language, "confirm_final_version"))}</button>
+    <a class="button secondary" href="/style-review">{html.escape(t(ui_language, "continue_editing"))}</a>
   </div>
 </form>"""
-    return html_page("Presentation Director Compare", body)
+    return html_page(t(ui_language, "compare_title"), body, ui_language)
 
 
 def render_all_pages(task_dir: Path) -> None:
@@ -2173,7 +2550,8 @@ Confirmed brief:
 Rules:
 - Before calling Codex Presentations, run:
   python3 "{script_path}" --base-dir "{task_dir.parent.parent}" guard --task "{task_dir.name}"
-  If the guard fails, open the confirmation page and wait for the user to confirm.
+  If the guard fails, open the confirmation page through serve-wait and continue only after the user's HTML click:
+  python3 "{script_path}" --base-dir "{task_dir.parent.parent}" serve-wait --task "{task_dir.name}" --for confirmed
 - Audience, goal, research strategy, source boundary, content language, logo policy, image policy, selected visual direction, and output constraints are locked.
 - Do not fabricate metrics, logos, customer names, screenshots, or official-looking brand assets.
 - Use official or user-provided brand assets only.
@@ -2189,10 +2567,12 @@ Output:
 - Generate layout JSON and QA notes in the Presentations workspace.
 - Write a concise QA summary to {task_dir / "v1" / "qa-summary.md"}.
 - QA must include a rendered no-overlap check: titles, subtitles, body text, labels, footers, page numbers, and connector lines must not collide.
-- Long titles must be checked after PowerPoint rendering; if a title wraps and covers the subtitle or body area, fix and re-render before handoff.
+- Prefer artifact-tool or headless rendering paths that do not trigger Microsoft PowerPoint file-access dialogs. If a PowerPoint-based render is unavoidable on macOS, start scripts/macos/powerpoint-grant-access-watcher.sh before rendering.
+- Long titles must be checked after rendering; if a title wraps and covers the subtitle or body area, fix and re-render before handoff.
 - After final selection, generate a view-only HTML companion at {task_dir / "final" / (task_dir.name + ".html")} from the selected version's per-slide previews.
 - Before returning control to the user after v1 generation, regenerate Director pages and start the local Director server with the style-review page open:
   python3 "{script_path}" --base-dir "{task_dir.parent.parent}" serve --task "{task_dir.name}" --open-page style-review
+- If waiting for a style decision, use serve-wait and continue from the revision/final-selection signal rather than asking the user to reply in chat.
 - Return PPTX path, HTML companion path, contact sheet path, QA summary, and remaining risks.
 """
 
@@ -2269,9 +2649,11 @@ class DirectorHandler(BaseHTTPRequestHandler):
             ui_language: str = ui_language_for_task(self.task_dir)
             self.send_html(message_page(t(ui_language, "confirmed_title"), t(ui_language, "confirmed_message"), ui_language))
         elif path == "/revision-saved":
-            self.send_html(message_page("Revision saved", "可以回到 Codex，agent 会检测 revision.ready 并生成对比版本。"))
+            ui_language: str = ui_language_for_task(self.task_dir)
+            self.send_html(message_page(t(ui_language, "revision_saved_title"), t(ui_language, "revision_saved_message"), ui_language))
         elif path == "/final-selected":
-            self.send_html(message_page("Final version selected", "可以回到 Codex，agent 会检测 final-selected.ready 并做最终交付。"))
+            ui_language: str = ui_language_for_task(self.task_dir)
+            self.send_html(message_page(t(ui_language, "final_selected_title"), t(ui_language, "final_selected_message"), ui_language))
         else:
             self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -2398,14 +2780,14 @@ class DirectorHandler(BaseHTTPRequestHandler):
 
 
 def message_page(title: str, message: str, ui_language: str = "zh") -> str:
-    body: str = f"""<div class="topline">Presentation Director</div>
+    body: str = f"""<div class="topline">{html.escape(t(ui_language, "intake_topline"))}</div>
 <h1>{html.escape(title)}</h1>
 <section class="section"><p>{html.escape(message)}</p></section>
 <div class="actions">
-  <a class="button" href="/intake">Intake</a>
-  <a class="button" href="/visual-inspiration">Visual Inspiration</a>
-  <a class="button" href="/style-review">Style Review</a>
-  <a class="button" href="/compare">Compare</a>
+  <a class="button" href="/intake">{html.escape(t(ui_language, "nav_intake"))}</a>
+  <a class="button" href="/visual-inspiration">{html.escape(t(ui_language, "nav_visual"))}</a>
+  <a class="button" href="/style-review">{html.escape(t(ui_language, "nav_style"))}</a>
+  <a class="button" href="/compare">{html.escape(t(ui_language, "nav_compare"))}</a>
 </div>"""
     return html_page(title, body, ui_language)
 
@@ -2478,6 +2860,54 @@ def command_serve(args: argparse.Namespace) -> None:
         print("\nStopping server.")
     finally:
         server.server_close()
+
+
+def command_serve_wait(args: argparse.Namespace) -> None:
+    task_dir: Path = resolve_task_dir(args)
+    if not (task_dir / "brief-draft.json").exists():
+        print(f"Missing brief-draft.json in {task_dir}. Run init first.", file=sys.stderr)
+        raise SystemExit(1)
+
+    filename: str | None = STATUS_FILES.get(args.for_status)
+    if filename is None:
+        raise SystemExit(f"Unknown status: {args.for_status}")
+    target: Path = status_dir(task_dir) / filename
+    if target.exists() and not args.allow_existing:
+        target.unlink()
+
+    handler_class: type[DirectorHandler] = type(
+        "BoundDirectorHandler",
+        (DirectorHandler,),
+        {"task_dir": task_dir},
+    )
+    server: ThreadingHTTPServer = ThreadingHTTPServer((args.host, args.port), handler_class)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.2}, daemon=True)
+    thread.start()
+
+    print(f"Serving Presentation Director for {task_dir}")
+    print(f"Intake:             http://{args.host}:{args.port}/intake")
+    print(f"Visual inspiration: http://{args.host}:{args.port}/visual-inspiration")
+    print(f"Confirm:            http://{args.host}:{args.port}/confirm")
+    print(f"Waiting for:        {target}")
+    if not args.no_open and args.open_page:
+        open_director_page(args.host, args.port, args.open_page)
+
+    started: float = time.time()
+    try:
+        while True:
+            if target.exists():
+                print(f"Ready: {target}")
+                return
+            if args.timeout > 0 and time.time() - started > args.timeout:
+                raise SystemExit(f"Timed out waiting for {target}")
+            time.sleep(args.interval)
+    except KeyboardInterrupt:
+        print("\nStopping server.")
+        raise
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
 
 
 def command_wait(args: argparse.Namespace) -> None:
@@ -2573,6 +3003,30 @@ def build_parser() -> argparse.ArgumentParser:
     )
     serve_parser.add_argument("--no-open", action="store_true", help="Do not open a browser page after the server starts.")
     serve_parser.set_defaults(func=command_serve)
+
+    serve_wait_parser = subparsers.add_parser(
+        "serve-wait",
+        help="Run the click-to-submit UI server, open a page, wait for a status signal, then stop the server.",
+    )
+    serve_wait_parser.add_argument("--task", required=True, help="Task slug or title.")
+    serve_wait_parser.add_argument("--host", default=DEFAULT_HOST, help=f"Host. Default: {DEFAULT_HOST}")
+    serve_wait_parser.add_argument("--port", default=DEFAULT_PORT, type=int, help=f"Port. Default: {DEFAULT_PORT}")
+    serve_wait_parser.add_argument(
+        "--open-page",
+        choices=sorted(PAGE_PATHS.keys()),
+        default="intake",
+        help="Open a Director page in the default browser once the server starts. Default: intake.",
+    )
+    serve_wait_parser.add_argument("--no-open", action="store_true", help="Do not open a browser page after the server starts.")
+    serve_wait_parser.add_argument("--for", dest="for_status", choices=sorted(STATUS_FILES.keys()), required=True)
+    serve_wait_parser.add_argument("--timeout", type=float, default=0.0, help="Seconds before timeout. 0 means no timeout.")
+    serve_wait_parser.add_argument("--interval", type=float, default=1.0, help="Polling interval seconds.")
+    serve_wait_parser.add_argument(
+        "--allow-existing",
+        action="store_true",
+        help="Treat an already-existing status file as ready instead of waiting for a fresh click.",
+    )
+    serve_wait_parser.set_defaults(func=command_serve_wait)
 
     wait_parser = subparsers.add_parser("wait", help="Wait for a ready status file.")
     wait_parser.add_argument("--task", required=True, help="Task slug or title.")

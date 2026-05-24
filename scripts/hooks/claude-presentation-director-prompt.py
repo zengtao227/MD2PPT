@@ -29,11 +29,12 @@ def main() -> int:
         "[Presentation Director hook] 检测到 PPT / slides / presentation 请求。"
         "全新 PPTX 必须使用 /Users/zengtao/Doc/My code/Presentation-Director 的 deck-builder / Presentation Director 流程；"
         "content_language 和 output_constraints 必须分开确认；"
-        "init 时要传入最近用户请求作为 --conversation-text，让确认页 ui_language 自动跟随当前对话语言；"
-        "生成前必须打开或呈现确认页/等价确认，并等待用户确认；"
+        "init 时要传入最近用户请求作为 --conversation-text，让 Director HTML 页面 ui_language 自动跟随当前对话语言；"
+        "生成前必须打开或呈现确认页/等价确认，并通过状态文件自动等待用户在 HTML 中点击确认；"
+        "不要要求用户复制/粘贴，也不要要求用户回聊天里回复已确认；"
         "如果工作区可用 Presentation Director，生成前运行 "
         "`python3 scripts/presentation_director.py --base-dir . guard --task <task-slug>`；"
-        "guard 失败时不得生成 PPTX。"
+        "guard 失败时用 `presentation_director.py serve-wait --task <task-slug> --for confirmed` 打开页面并自动等待；不得生成 PPTX。"
     )
 
     print(

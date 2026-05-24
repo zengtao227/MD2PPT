@@ -7,7 +7,7 @@ description: Orchestrates professional presentation creation from source materia
 
 A workflow orchestration skill for building professional presentations.
 
-In Codex, this skill is the front door for net-new PPTX requests: run `Presentation Director` first, confirm research strategy and visual inspiration, open the confirmation page, wait for the user to confirm, then hand the confirmed brief to the Codex Presentations plugin. Do not let Codex Presentations start from an unconfirmed prompt unless the user explicitly asks to skip the director.
+In Codex, this skill is the front door for net-new PPTX requests: run `Presentation Director` first, confirm research strategy and visual inspiration, open the confirmation page, automatically wait for the click confirmation signal, then hand the confirmed brief to the Codex Presentations plugin. The user must only click in the HTML UI; do not ask them to copy/paste, report choices in chat, or reply "confirmed". Do not let Codex Presentations start from an unconfirmed prompt unless the user explicitly asks to skip the director.
 
 Outside Codex, this skill coordinates the fuller deck.md-centered workflow: source material through slide planning, design intelligence, visual contract, and verified PPTX or HTML output.
 
@@ -271,35 +271,31 @@ python3 scripts/presentation_director.py init \
   --conversation-text "<recent user prompt or conversation excerpt>"
 ```
 
-Use `--ui-language auto` by default. The confirmation page should follow the user's current conversation language, while `content_language` controls the language of the generated slide content.
+Use `--ui-language auto` by default. The Director HTML gates (`intake`, `visual-inspiration`, `confirm`, `style-review`, and `compare`) should follow the user's current conversation language, while `content_language` controls the language of the generated slide content.
 
-3. Start the local UI server:
+3. Start the local UI server and wait in the same command:
 
 ```bash
-python3 scripts/presentation_director.py serve --task "<short task slug>"
+python3 scripts/presentation_director.py serve-wait \
+  --task "<short task slug>" \
+  --for confirmed
 ```
 
-4. Do not ask the user to copy a URL. The intake page should open in the default browser. The user will submit intake choices, review the confirmation page, and then click confirm. If the page does not open, use:
+4. Do not ask the user to copy a URL, paste JSON, or come back to chat to say "confirmed". The intake page should open in the default browser. The user will submit intake choices, review the confirmation page, and click confirm. `serve-wait` blocks until `confirmed.ready`, then exits so the agent can continue automatically. If the page does not open, use:
 
 ```bash
 python3 scripts/presentation_director.py open-page --task "<short task slug>" --page intake
 ```
 
-For batch or background runs, use `--no-open` and log the printed URL instead of opening a browser.
+For batch or background runs, use `--no-open`, but still pair it with `serve-wait` or `wait` so generation resumes from a file signal, not a chat reply.
 
-5. Wait for confirmation:
-
-```bash
-python3 scripts/presentation_director.py wait --task "<short task slug>" --for confirmed
-```
-
-6. Generate the handoff prompt:
+5. Generate the handoff prompt:
 
 ```bash
 python3 scripts/presentation_director.py prompt --task "<short task slug>" --kind initial
 ```
 
-7. Only now call Codex Presentations.
+6. Only now call Codex Presentations.
 
 After v1 is generated, render Director pages and open the style review page. Use the local Director server for click-to-submit behavior; opening `style-review.html` directly is only a static preview. Wait for `revision.ready` if the user chooses a revision, then use:
 
@@ -423,7 +419,7 @@ python3 scripts/preview_palette.py
 # Shows: Claude's industry-matched recommendations + full 50-palette browsable library
 ```
 
-Tell the user: **"配色方案预览已生成，请在浏览器中打开 `assets/palette-preview.html`。顶部显示基于行业分析的推荐方案，下方可从50套精选库中自由选择。选好后点击「确认此配色方案」，将确认内容粘贴回来继续。"**
+Open `assets/palette-preview.html` automatically. The user should click a palette in the HTML UI; do not ask them to copy/paste the selection back into chat. If the legacy preview script cannot emit a status file, replace it with an equivalent Director-style local endpoint before using it as a primary flow.
 
 If `scripts/preview_palette.py` is not available (outside MD2PPT repo), fall back to terminal text with `████` Unicode blocks — but always note the limitation.
 
@@ -432,7 +428,7 @@ If `scripts/preview_palette.py` is not available (outside MD2PPT repo), fall bac
 - Update `palettes.json` and re-run the script each iteration — the browser auto-refreshes on reload
 - User can also ask for a mood board image (DALL-E 3) to preview the overall visual feel
 
-**STOP. Do not proceed to Step 5 until user explicitly confirms a palette by pasting their selection.**
+**STOP. Do not proceed to Step 5 until the user explicitly confirms a palette through the HTML UI or an equivalent file-signal mechanism.**
 
 The output of Step 4 is:
 - Confirmed color palette (hex values, semantic roles)
@@ -456,7 +452,7 @@ python3 scripts/preview_locks.py
 python3 ~/.claude/skills/deck-builder/scripts/preview_locks.py
 ```
 
-运行后告知用户：**"结构层预览已生成，请在浏览器中打开 `assets/locks-preview.html`。预览默认为中性色，便于纯粹比较布局结构。如已在 Step 4 确认配色，可点「用我的配色预览」查看真实效果。选好后点「确认此结构层 →」，将选择粘贴回来继续。"**
+运行后自动打开 `assets/locks-preview.html`。用户只应在 HTML UI 中点击确认结构层；不要要求用户把选择粘贴回聊天。如果旧预览脚本不能写入状态文件，应先补齐等价的本地端点/文件信号，再作为主流程使用。
 
 同时给出文字推荐（作为辅助说明，不替代 HTML 预览）：
 
@@ -470,7 +466,7 @@ python3 ~/.claude/skills/deck-builder/scripts/preview_locks.py
 
 推荐最匹配 Step 4 配色情绪的选项，说明理由。
 
-**STOP. 等用户从预览页面选择并粘贴确认，不得自行决定。**
+**STOP. 等用户从预览页面点击确认，并通过状态文件或等价机制恢复；不得要求聊天粘贴，也不得自行决定。**
 
 两层都确认之后，才写入 `deck.md` 的 Design Contract：
 
@@ -495,11 +491,11 @@ python3 ~/.claude/skills/deck-builder/scripts/preview_locks.py
 
 **Trigger this step only after Step 5 structure lock is confirmed.**
 
-**HARD STOP — ask this question and wait for the user's reply before proceeding to Step 6:**
+**HARD STOP — present this choice in the HTML UI and wait for the click/file signal before proceeding to Step 6:**
 
-> "需要为封面和章节分隔页生成 AI 背景图吗？现有的纯色方案够用就可以跳过。（回复「跳过」或「需要」）"
+> "需要为封面和章节分隔页生成 AI 背景图吗？现有的纯色方案够用就可以跳过。"
 
-**Do NOT proceed to Step 6 until the user replies.** This step is skippable, but you must ask.
+**Do NOT proceed to Step 6 until the user clicks a choice or an equivalent file signal is present.** This step is skippable, but you must ask.
 
 **If user says skip / no / 跳过:** proceed directly to Step 6.
 
@@ -535,7 +531,17 @@ Before generating a net-new deck in a workspace that has Presentation Director, 
 python3 scripts/presentation_director.py --base-dir "." guard --task "<task-slug>"
 ```
 
-If that guard fails, open the Director confirmation page and wait for the user to confirm. Do not generate PPTX/HTML by treating a conversational "continue" as a substitute for the confirmation gate unless the user explicitly asks to skip the gate or generate directly.
+If that guard fails, open the Director confirmation page through `serve-wait` and continue automatically after the user clicks in the HTML UI. Do not ask the user to reply in chat. Do not generate PPTX/HTML by treating a conversational "continue" as a substitute for the confirmation gate unless the user explicitly asks to skip the gate or generate directly.
+
+### macOS PowerPoint File Access Dialogs
+
+Prefer render/export paths that do not use Microsoft PowerPoint UI automation, such as Codex Presentations artifact-tool rendering or LibreOffice/headless renderers. If a PowerPoint-based render is unavoidable on macOS, start the watcher before the render command:
+
+```bash
+scripts/macos/powerpoint-grant-access-watcher.sh 180 &
+```
+
+The watcher clicks common Microsoft PowerPoint `Grant File Access`, `Select`, and `Grant Access` dialogs. macOS may still require one-time Accessibility permission for the terminal/Codex host process; that OS-level permission cannot be silently bypassed by project code.
 
 ### Claude Step 7 — Render QA
 
