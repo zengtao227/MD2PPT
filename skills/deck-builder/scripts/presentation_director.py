@@ -2023,6 +2023,7 @@ def build_draft_brief(
     sources: list[str],
     ui_language: str = "auto",
     conversation_text: str = "",
+    enhance_mode: bool = False,
 ) -> JsonDict:
     source_items: list[JsonDict] = build_source_items(sources)
     fallback_text: str = " ".join([topic, task_slug, *sources])
@@ -2035,6 +2036,13 @@ def build_draft_brief(
         }
         for question in INTAKE_QUESTIONS
     }
+    if enhance_mode:
+        # PPTX→HTML enhance mode: content is already finalised — push toward rich HTML output.
+        for key, value, label in (
+            ("output_format", "html-revealjs", "HTML（Reveal.js）"),
+            ("visual_freedom", "delegate", "AI 自主决策"),
+        ):
+            default_selections[key] = {"value": value, "label": label, "source": "enhance-mode-default"}
     return {
         "version": "0.1",
         "task_slug": task_slug,
@@ -2044,9 +2052,10 @@ def build_draft_brief(
         "conversation_text": conversation_text,
         "sources": source_items,
         "selections": default_selections,
-        "output_format": output_format_from_selections(default_selections, "pptx"),
+        "output_format": output_format_from_selections(default_selections, "html-revealjs" if enhance_mode else "pptx"),
         "risks": infer_risks(source_items),
         "confirmed": False,
+        "enhance_mode": enhance_mode,
         "created_at": datetime.now().isoformat(timespec="seconds"),
     }
 
@@ -2354,6 +2363,36 @@ def write_share_html(
     return target
 
 
+def _render_pptx_structure_panel(structure: list[JsonDict], ui_language: str) -> str:
+    if not structure:
+        return ""
+    slide_rows: str = "".join(
+        f'<tr><td style="width:2.5em;text-align:center;color:#5a7080;font-size:0.85em">{s["slide_num"]}</td>'
+        f'<td style="font-weight:600">{html.escape(str(s.get("title","—")))}</td>'
+        f'<td style="color:#5a7080;font-size:0.85em">{html.escape(", ".join(s.get("bullets",[])[:3]))}</td></tr>'
+        for s in structure
+    )
+    lang_labels: dict[str, str] = {
+        "zh": "已从 PPTX 提取的幻灯片结构",
+        "en": "Slide structure extracted from PPTX",
+        "de": "Aus PPTX extrahierte Folienstruktur",
+        "fr": "Structure extraite du PPTX",
+        "it": "Struttura estratta dal PPTX",
+        "es": "Estructura extraída del PPTX",
+    }
+    label: str = lang_labels.get(ui_language, lang_labels["en"])
+    return (
+        f'<section class="section" style="border-left:4px solid #0f6f8f;padding-left:1em;margin-bottom:1.5em">'
+        f'<h2 style="color:#0f6f8f;margin-top:0">✦ {html.escape(label)}</h2>'
+        f'<table style="width:100%;border-collapse:collapse;font-size:0.85em">'
+        f'<thead><tr><th>#</th><th>Title</th><th>Content preview</th></tr></thead>'
+        f'<tbody>{slide_rows}</tbody></table>'
+        f'<p style="font-size:0.8em;color:#5a7080;margin-top:0.5em">'
+        f'The generated HTML will be recreated from this structure with a richer visual style.</p>'
+        f'</section>'
+    )
+
+
 def render_intake(task_dir: Path) -> str:
     draft: JsonDict = read_json(task_dir / "brief-draft.json")
     current: JsonDict = read_json(task_dir / "intake-selection.json", draft)
@@ -2362,9 +2401,38 @@ def render_intake(task_dir: Path) -> str:
     current_sources: Any = current.get("sources", draft.get("sources", []))
     source_list: str = render_sources(current_sources, ui_language)
     sources_text: str = format_sources_text(current_sources)
-    body: str = f"""<div class="topline">{html.escape(t(ui_language, "intake_topline"))}</div>
+    enhance_mode: bool = bool(current.get("enhance_mode", draft.get("enhance_mode", False)))
+    pptx_structure: list[JsonDict] = list(current.get("pptx_structure", draft.get("pptx_structure", [])))
+    enhance_banner: str = ""
+    if enhance_mode:
+        lang_titles: dict[str, str] = {
+            "zh": "增强模式：PPTX → 酷炫 HTML",
+            "en": "Enhance Mode: PPTX → Rich HTML",
+            "de": "Enhance-Modus: PPTX → Ansprechendes HTML",
+            "fr": "Mode amélioration : PPTX → HTML enrichi",
+            "it": "Modalità miglioramento: PPTX → HTML avanzato",
+            "es": "Modo mejora: PPTX → HTML enriquecido",
+        }
+        lang_descs: dict[str, str] = {
+            "zh": "内容已从 PPTX 提取完毕。选择视觉风格后，将生成带完整动画和渐变背景的 HTML 展示版本。",
+            "en": "Content has been extracted from your PPTX. Choose a visual direction — the HTML will be regenerated with animations and gradient backgrounds.",
+            "de": "Inhalt wurde aus der PPTX extrahiert. Wählen Sie eine visuelle Richtung für die animierte HTML-Version.",
+            "fr": "Le contenu a été extrait de votre PPTX. Choisissez une direction visuelle pour la version HTML animée.",
+            "it": "Il contenuto è stato estratto dal PPTX. Scegliere una direzione visiva per la versione HTML animata.",
+            "es": "El contenido ha sido extraído del PPTX. Elija una dirección visual para la versión HTML animada.",
+        }
+        enhance_banner = (
+            f'<div style="background:#f0f8fb;border:1px solid #0f6f8f;border-radius:6px;'
+            f'padding:0.9em 1.2em;margin-bottom:1.5em">'
+            f'<strong style="color:#0f6f8f">⚡ {html.escape(lang_titles.get(ui_language, lang_titles["en"]))}</strong><br>'
+            f'<span style="font-size:0.9em;color:#132238">{html.escape(lang_descs.get(ui_language, lang_descs["en"]))}</span>'
+            f'</div>'
+        )
+    structure_panel: str = _render_pptx_structure_panel(pptx_structure, ui_language) if enhance_mode else ""
+    body: str = f"""{enhance_banner}<div class="topline">{html.escape(t(ui_language, "intake_topline"))}</div>
 <h1>{html.escape(t(ui_language, "intake_title"))}</h1>
 <p>{html.escape(t(ui_language, "intake_intro"))}</p>
+{structure_panel}
 <section class="section">
   <h2>{html.escape(t(ui_language, "source_material"))}</h2>
   {source_list}
@@ -3041,6 +3109,52 @@ def message_page(title: str, message: str, ui_language: str = "zh") -> str:
     return html_page(title, body, ui_language)
 
 
+def extract_pptx_structure(pptx_path: str) -> list[JsonDict]:
+    """Extract slide titles and bullet text from a PPTX file using python-pptx.
+    Returns an empty list if python-pptx is not installed or the file cannot be read.
+    Caps at 5 bullets per slide to stay within content density limits.
+    """
+    try:
+        from pptx import Presentation as _Presentation  # type: ignore
+        from pptx.enum.text import PP_ALIGN  # noqa: F401  # optional; just test import
+    except ImportError:
+        return []
+    try:
+        prs = _Presentation(pptx_path)
+    except Exception:
+        return []
+    slides: list[JsonDict] = []
+    for i, slide in enumerate(prs.slides):
+        title: str | None = None
+        bullets: list[str] = []
+        for shape in slide.shapes:
+            if not hasattr(shape, "has_text_frame") or not shape.has_text_frame:
+                continue
+            text: str = shape.text_frame.text.strip()
+            if not text:
+                continue
+            is_title: bool = False
+            if hasattr(shape, "placeholder_format") and shape.placeholder_format is not None:
+                ph_idx = getattr(shape.placeholder_format, "idx", None)
+                if ph_idx == 0:
+                    is_title = True
+            if is_title:
+                title = text
+            elif not title:
+                title = text
+            else:
+                for para in shape.text_frame.paragraphs:
+                    pt = para.text.strip()
+                    if pt and len(bullets) < 5:
+                        bullets.append(pt)
+        slides.append({
+            "slide_num": i + 1,
+            "title": title or f"Slide {i + 1}",
+            "bullets": bullets,
+        })
+    return slides
+
+
 def resolve_task_dir(args: argparse.Namespace) -> Path:
     base_dir: Path = Path(args.base_dir).expanduser().resolve()
     thread_id: str = args.thread_id or os.environ.get("CODEX_THREAD_ID") or now_id()
@@ -3051,17 +3165,29 @@ def resolve_task_dir(args: argparse.Namespace) -> Path:
 def command_init(args: argparse.Namespace) -> None:
     task_dir: Path = resolve_task_dir(args)
     task_dir.mkdir(parents=True, exist_ok=True)
+    enhance_mode: bool = getattr(args, "mode", "new") == "enhance"
     brief: JsonDict = build_draft_brief(
         slugify(args.task),
         args.topic or args.task,
         args.source or [],
         args.ui_language,
         args.conversation_text,
+        enhance_mode=enhance_mode,
     )
+    if enhance_mode:
+        pptx_sources: list[str] = [s for s in (args.source or []) if s.lower().endswith(".pptx")]
+        if pptx_sources:
+            structure: list[JsonDict] = extract_pptx_structure(pptx_sources[0])
+            if structure:
+                brief["pptx_structure"] = structure
+                print(f"Extracted {len(structure)} slides from {pptx_sources[0]}")
+            else:
+                print("Warning: could not extract PPTX structure (python-pptx missing or file unreadable).")
     write_json(task_dir / "brief-draft.json", brief)
     write_json(task_dir / "brief" / "draft-brief.json", brief)
     render_all_pages(task_dir)
-    print(f"Presentation Director task created: {task_dir}")
+    mode_label: str = " [ENHANCE MODE — PPTX→HTML]" if enhance_mode else ""
+    print(f"Presentation Director task created{mode_label}: {task_dir}")
     print(f"Open intake page: {task_dir / 'intake.html'}")
     print("For click-to-submit flow, run:")
     print(f"  python3 scripts/presentation_director.py serve --task {slugify(args.task)}")
@@ -3232,6 +3358,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Language for Director communication UI. auto detects from --conversation-text or topic.",
     )
     init_parser.add_argument("--conversation-text", default="", help="Recent user conversation text for auto-detecting the Director UI language.")
+    init_parser.add_argument(
+        "--mode",
+        choices=("new", "enhance"),
+        default="new",
+        help=(
+            "Workflow mode. 'new' (default): full intake from source material. "
+            "'enhance': extract content from an existing PPTX source and regenerate as a visually rich HTML presentation."
+        ),
+    )
     init_parser.set_defaults(func=command_init)
 
     render_parser = subparsers.add_parser("render", help="Regenerate HTML pages from current JSON.")
