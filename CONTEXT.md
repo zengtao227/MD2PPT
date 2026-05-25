@@ -52,11 +52,11 @@ Codex 中生成专业可编辑 PPTX 的主路径。它应使用 artifact-tool `p
 
 Codex 环境下创建全新 PPTX 前的交互增强层。它不生成 PPTX，而是先用点击式 intake 收集听众、目标、资料路径或网页地址、资料研究策略、资料边界、内容语言、logo/品牌素材、AI 生图许可、页数/时长限制和视觉方向，再通过 brief confirmation gate 让用户确认，之后才把确认后的 brief 交给 Codex Presentations。
 
-Director 的沟通界面语言和 PPT 正文语言是两个不同概念：`ui_language` 默认根据当前对话文本自动检测，用于确认页和按钮等用户沟通文案；`content_language` 用于控制 PPT 正文、标题和讲稿语言。运行 `init` 时应传入最近用户请求作为 `--conversation-text`，让确认页跟随用户对话语言。
+Director 的沟通界面语言和 PPT 正文语言是两个不同概念：`ui_language` 默认根据当前对话文本自动检测，用于 intake、visual-inspiration、confirm、style-review、compare 等 HTML gate 页面和按钮文案；`content_language` 用于控制 PPT 正文、标题和讲稿语言。运行 `init` 时应传入最近用户请求作为 `--conversation-text`，让自动打开的 HTML 页面跟随用户对话语言。
 
-Director 交互页应自动打开，不要让用户复制本地 URL。`serve` 默认打开 `intake`；用户点“下一步”后进入 `visual-inspiration`，再进入确认页。批处理或后台运行可显式传 `--no-open`。
+Director 交互页应自动打开，不要让用户复制本地 URL、粘贴 JSON、或回到聊天里回复“已确认”。交互式流程应优先使用 `serve-wait --for confirmed`：用户点“下一步”后进入 `visual-inspiration`，再进入确认页；点击确认后写入状态文件，agent 自动继续生成。批处理或后台运行可显式传 `--no-open`，但仍应通过状态文件恢复，而不是通过聊天确认。
 
-Codex 交互式全新 PPTX 请求必须打开确认页并等待用户确认；agent 不得自己 POST `/api/confirm`、不得直接写入 `brief-confirmed.json` 或 `confirmed.ready` 来代替用户确认。只有用户明确说“跳过确认/直接生成/不用等我确认”时，才允许后台确认。`style-review` 和 `compare` 可用 `presentation_director.py open-page` 或 `render --open-page ...` 打开。
+Codex 交互式全新 PPTX 请求必须打开确认页并自动等待用户在 HTML 中点击确认；agent 不得要求用户复制/粘贴、不得要求用户回聊天里回复“已确认”，也不得自己 POST `/api/confirm`、直接写入 `brief-confirmed.json` 或 `confirmed.ready` 来代替用户确认。只有用户明确说“跳过确认/直接生成/不用等我确认”时，才允许后台确认。`style-review` 和 `compare` 也应使用 HTML 点击 + 状态文件恢复；可用 `presentation_director.py open-page` 或 `render --open-page ...` 打开页面。
 
 ### Research Strategy Gate
 
@@ -177,6 +177,16 @@ PPTX/<task-slug>/final/<deck-title>.pptx
 PPTX/<task-slug>/final/<deck-title>.html
 ```
 
+### macOS PowerPoint 文件授权弹窗
+
+默认优先使用 Codex Presentations artifact-tool 或 LibreOffice/headless 渲染路径，避免触发 Microsoft PowerPoint 的 macOS 沙盒文件授权弹窗。如果必须使用 PowerPoint 渲染并遇到 `Grant File Access` / `Please select the folder "render"`，应在渲染前启动：
+
+```bash
+scripts/macos/powerpoint-grant-access-watcher.sh 180 &
+```
+
+该 watcher 会尝试自动点击 `Select` / `Grant Access`。但 macOS 的 Accessibility/TCC 权限本身不能被项目代码静默绕过；如果系统第一次要求给 Codex/Terminal 自动控制权限，需要一次性授权，之后 watcher 才能自动处理 PowerPoint 弹窗。
+
 在 Codex 环境中，`deck.md`、`design-locks` 和 `ui-ux-pro-max` 都可以作为可选的中间资料或风格约束，但不再是全新 PPTX 第一版生成前的硬性步骤。第一版应优先让 Presentations plugin 根据 confirmed brief 自主完成内容组织、设计系统、contact sheet rhythm 和渲染 QA。
 
 如果目标是在线分享而非 PowerPoint 编辑，生成层可以改走完整 HTML deck 路由。注意这不同于每个 PPTX 最终都会附带的只读 HTML companion；HTML deck 路由是把 HTML 作为主输出。
@@ -234,3 +244,4 @@ PPTX/<task-slug>/final/<deck-title>.html
 - Claude 可用 `scripts/hooks/claude-presentation-director-prompt.py` 做 UserPromptSubmit 提醒，用 `scripts/hooks/presentation-director-guard.sh` 做生成前 guard adapter。
 - 不把 Marp PPTX 称为可细编辑 PPTX；Marp 更适合快速写作、预览、PDF 和放映版输出。
 - 不把 `ui-ux-pro-max` 或 Open Design 称为 PPTX 生成器；它们分别是设计情报和视觉合同来源。
+- 全局设计规范见 `DESIGN.md`；它是软约束，优先级低于用户明确要求、`brief-confirmed.json` 和任务级 `brief/visual-contract.md`。

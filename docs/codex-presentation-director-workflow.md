@@ -141,14 +141,14 @@ Recommendation: choose Option C for Codex.
 
 - 如果 intake 问题太多，用户体验会变重。
 - 如果 style options 太抽象，用户仍然不知道怎么选。
-- 如果自动继续机制不稳定，会退回 copy/paste。
+- 如果自动继续机制不稳定，生成流程会停住。
 
 Mitigation:
 
 - 用 preset 先自动填大部分答案。
 - 每个问题都允许 `自定义`。
 - 生成前加 brief confirmation gate。
-- 本地服务失败时才使用 copy/paste fallback。
+- 本地服务失败时优先修复/重启服务；copy/paste 只能作为明确标记的降级应急，不作为标准流程。
 
 ## Product Position
 
@@ -906,7 +906,7 @@ python3 scripts/presentation_director.py prompt --task "<task-slug>" --kind revi
 python3 scripts/presentation_director.py share-html --task "<task-slug>" --version "<selected-version>"
 ```
 
-`ui_language` controls the Director confirmation-page communication language and defaults to auto-detection from `--conversation-text`; `content_language` remains the generated deck's body-copy language.
+`ui_language` controls the Director HTML gate communication language (`intake`, `visual-inspiration`, `confirm`, `style-review`, and `compare`) and defaults to auto-detection from `--conversation-text`; `content_language` remains the generated deck's body-copy language.
 
 Possible endpoints:
 
@@ -931,15 +931,21 @@ PPTX/<task-slug>/status/revision.ready
 PPTX/<task-slug>/status/final-selected.ready
 ```
 
-The agent waits for these signals and continues automatically.
+The agent waits for these signals and continues automatically. In interactive Codex sessions, prefer:
+
+```bash
+python3 scripts/presentation_director.py serve-wait --task "<task-slug>" --for confirmed
+```
+
+The user should only click in the HTML UI. Do not ask the user to copy/paste anything or return to chat to say "confirmed".
 
 Fallback mechanism:
 
 If local server is unavailable:
 
 1. Render static HTML.
-2. User manually reports choices in chat.
-3. Agent continues.
+2. Fix or restart the local server and resume file-signal waiting.
+3. Only if the server cannot run at all, use a clearly marked degraded chat confirmation.
 
 This fallback should be clearly marked as less convenient.
 
@@ -1167,7 +1173,7 @@ Do:
 Do not:
 
 - Start generation immediately after intake selection without confirmation.
-- Ask the user to copy/paste JSON in the primary flow.
+- Ask the user to copy/paste JSON or reply "confirmed" in chat in the primary flow.
 - Lock design structure before first draft unless the user explicitly asks.
 - Treat intake, style-review, compare, or other preview HTML as the final share HTML companion or final HTML deck.
 - Fabricate logos, official marks, screenshots, product UI, customer marks, or metrics.
@@ -1204,11 +1210,12 @@ Work:
 
 - Implement `scripts/presentation_director.py`.
 - Add local server endpoints.
+- Add `serve-wait` so the agent opens HTML, waits for the file signal, and continues automatically after the click.
 - Write `brief-confirmed.json` and status files only after the user submits the confirmation form.
 
 Done when:
 
-- User can confirm intake by clicking, and Codex continues without copy/paste.
+- User can confirm intake by clicking, and Codex continues without copy/paste or chat replies.
 
 ### Phase 4 - Style Review and Compare UI
 
