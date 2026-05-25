@@ -1,13 +1,13 @@
 ---
 name: deck-builder
-description: Orchestrates professional presentation creation from source materials. In Codex net-new PPTX requests, this skill MUST run Presentation Director intake, research strategy, visual inspiration, and brief confirmation before Codex Presentations. For Claude/offline/HTML paths it coordinates deck.md planning, design intelligence, visual contracts, and verified output. Do NOT trigger for small edits to existing slides, quick Marp/reveal.js previews, or requests that do not require a new deck workflow.
+description: Orchestrates professional presentation creation from source materials. In Codex net-new presentation requests, this skill MUST run Presentation Director intake, output format selection, research strategy, visual inspiration, and brief confirmation before routing to Reveal.js HTML, Codex Presentations, or both. For Claude/offline paths it coordinates deck.md planning, design intelligence, visual contracts, and verified output. Do NOT trigger for small edits to existing slides, quick Marp/reveal.js previews, or requests that do not require a new deck workflow.
 ---
 
 # Deck Builder
 
 A workflow orchestration skill for building professional presentations.
 
-In Codex, this skill is the front door for net-new PPTX requests: run `Presentation Director` first, confirm research strategy and visual inspiration, open the confirmation page, automatically wait for the click confirmation signal, then hand the confirmed brief to the Codex Presentations plugin. The user must only click in the HTML UI; do not ask them to copy/paste, report choices in chat, or reply "confirmed". Do not let Codex Presentations start from an unconfirmed prompt unless the user explicitly asks to skip the director.
+In Codex, this skill is the front door for net-new presentation requests: run `Presentation Director` first, confirm output format, research strategy and visual inspiration, open the confirmation page, automatically wait for the click confirmation signal, then route the confirmed brief by `output_format`. Use Reveal.js HTML direct writing for `html-revealjs`, Codex Presentations for `pptx`, and both paths for `both`. The user must only click in the HTML UI; do not ask them to copy/paste, report choices in chat, or reply "confirmed". Do not let generation start from an unconfirmed prompt unless the user explicitly asks to skip the director.
 
 Outside Codex, this skill coordinates the fuller deck.md-centered workflow: source material through slide planning, design intelligence, visual contract, and verified PPTX or HTML output.
 
@@ -85,7 +85,7 @@ Resolve dependencies in this order:
 | `design-consultant` | Use the current repo's `skills/ui-ux-pro-max/scripts/search.py` if present; otherwise try `$HOME/.claude/skills/ui-ux-pro-max/scripts/search.py`, then `$HOME/.codex/skills/ui-ux-pro-max/scripts/search.py`. If none exists, synthesize a short design intelligence brief from the source and mark the tool as unavailable. |
 | `design-locks/` | Use the current repo's `design-locks/` if present. Otherwise look for `design-locks/` inside the directory containing this SKILL.md (bundled by install.sh). If neither exists, use a lightweight visual contract written directly in `deck.md` and do not cite a missing lock file. |
 | PPTX fallback | Use `skills/pptx/SKILL.md` only when it exists in the current repo. If absent, do not pretend the fallback is available. |
-| HTML engines | Use `html-ppt-skill` or `guizang-ppt-skill` only when the skill/tool is available in the active environment. If neither is available, explain the missing dependency or generate only the handoff prompt. |
+| Reveal.js HTML | Native HTML output path. When `output_format` is `html-revealjs` or `both`, write Reveal.js 5.1.0 HTML directly; do not require `html-ppt-skill` or `guizang-ppt-skill`. |
 | Presentation Director docs | Treat `docs/pptx-master-workflow.md` and `docs/quality-gates.md` as optional project-level context. Outside Presentation Director, rely on this skill's reference files and the minimum QA checklist below instead. |
 
 Never include file paths in a generation prompt unless those files actually exist.
@@ -144,9 +144,9 @@ Final PPTX files are the editable source of record. For small changes, use manua
 
 ## Pipeline Overview
 
-### Codex Net-New PPTX Path
+### Codex Net-New Presentation Path
 
-Use this path when Codex has the Presentations plugin available and the user asks for a new editable PPTX.
+Use this path when the user asks for a new presentation in Codex. `output_format` decides whether the final generation route is Reveal.js HTML, PPTX, or both.
 
 ```
 [1] Source Material
@@ -165,11 +165,24 @@ Use this path when Codex has the Presentations plugin available and the user ask
 [5] Brief Confirmation Gate  ← HARD STOP
     open the confirmation page; user reviews the summarized plan and clicks "confirm"
         ↓
-[6] Codex Presentations
-    confirmed brief → claim spine → design system → contact-sheet plan → editable PPTX
+[6] Generation — route by output_format in brief-confirmed.json
+    ├─ output_format = "html-revealjs"
+    │    → Claude/Codex writes Reveal.js HTML directly (NOT via Presentations plugin)
+    │    → Save to PPTX/<task-slug>/final/<deck-title>.html
+    │
+    ├─ output_format = "pptx"
+    │    → Codex Presentations plugin (artifact-tool presentation-jsx)
+    │    → Save to PPTX/<task-slug>/final/<deck-title>.pptx
+    │
+    └─ output_format = "both"
+         → First: Codex Presentations plugin → PPTX
+         → Then: Claude/Codex writes Reveal.js HTML directly → HTML
+         → Save both to PPTX/<task-slug>/final/
+         → Note: HTML uses gradients/animation; PPTX uses solid-color equivalent
         ↓
 [7] Render QA
-    previews + layout JSON + contact sheet + fix-and-rerender
+    PPTX route: previews + layout JSON + contact sheet + fix-and-rerender
+    HTML route: open in browser + screenshot each slide + text-overflow check
         ↓
 [8] Style Review
     user chooses keep/current or visual revision directions
@@ -207,7 +220,18 @@ In interactive Codex sessions, the confirmation gate is a real user-action gate:
 [5] 结构层 (Structure Layer)
     展示全部 5 个 design-locks → 用户选择 → 记录颜色覆盖 → 两层都确认后才 lock
         ↓
-[6] Generation  (environment-dependent — see Tool Routing)
+[6] Generation — route by output_format in brief-confirmed.json or chat confirmation
+    ├─ output_format = "html-revealjs"
+    │    → Claude writes Reveal.js 5.1.0 HTML directly (see HTML Spec in this skill)
+    │    → Single .html file, CDN-loaded
+    │    → Save to PPTX/<task-slug>/final/<deck-title>.html
+    │
+    ├─ output_format = "pptx"
+    │    → skills/pptx + pptxgenjs (existing path, no change)
+    │
+    └─ output_format = "both"
+         → Generate HTML first, then PPTX
+         → HTML uses gradients/animation; PPTX uses solid-color equivalent
         ↓
 [7] Render QA
     Contact sheet + layout JSON + at least one fix-and-reverify cycle
@@ -233,7 +257,7 @@ Claude Code and offline agents follow the same confirmation principle as Codex. 
 | Codex net-new PPTX | Presentation Director → Presentations plugin **(primary PPTX)** | Intake + research strategy + visual inspiration + brief confirmation must happen before `artifact-tool presentation-jsx` |
 | Codex targeted edit / confirmed brief | Presentations plugin | Direct only when not creating a new deck or when `brief-confirmed.json` already exists |
 | Claude Code / offline | Presentation Director or equivalent confirmation → `skills/pptx` + pptxgenjs **(fallback PPTX)** | Same `content_language` / `output_constraints` split and user-confirmation gate apply before pptxgenjs |
-| Either | HTML deck skill, when installed | `html-ppt-skill` or `guizang-ppt-skill`; secondary output for online sharing |
+| Codex / Claude Code (HTML) | Claude/Codex writes Reveal.js HTML directly | Native path. No external skill or plugin required. Version: 5.1.0 via jsDelivr CDN. |
 | Either | Marp | Quick draft / PDF only — not editable PPTX |
 
 **Hard constraints — never misattribute these roles:**
@@ -241,7 +265,7 @@ Claude Code and offline agents follow the same confirmation principle as Codex. 
 - `ui-ux-pro-max` = design intelligence tool, NOT a PPTX generator
 - `design-locks/` = visual contracts, NOT slide templates or generation engines
 - pptxgenjs = Claude Code fallback only, NOT the Codex primary path
-- html-ppt-skill / guizang-ppt-skill = HTML secondary output only, NOT a PPTX replacement
+- Reveal.js HTML = first-class browser presentation output when selected, NOT a PPTX replacement
 - Marp output = NOT a professional editable PPTX
 
 **Claude Design / designer-skills boundary:**
@@ -253,6 +277,98 @@ Claude Code and offline agents follow the same confirmation principle as Codex. 
 ---
 
 ## Execution Steps
+
+## Reveal.js HTML Generation Spec
+
+When `output_format` is `"html-revealjs"` or `"both"`, generate a self-contained Reveal.js 5.1.0 HTML file.
+
+This applies to both Codex and Claude Code. In Codex, write the HTML as a file artifact or local file; do NOT call Presentations plugin for HTML. In Claude Code, write the HTML directly to `PPTX/<task-slug>/final/<deck-title>.html`.
+
+### CDN Links (pin to 5.1.0)
+
+- reset: `https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css`
+- main css: `https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css`
+- theme: `https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/{black|white|league|night|serif}.css`
+- js: `https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js`
+
+### HTML Structure
+
+```html
+<!DOCTYPE html>
+<html lang="{content_language}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>{deck_title}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/{base_theme}.css">
+  <style>
+    :root {
+      --r-main-color: {text_color};
+      --r-heading-color: {heading_color};
+      --r-link-color: {accent_color};
+    }
+  </style>
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+      <section data-auto-animate>
+        <h1>{deck_title}</h1>
+        <p>{subtitle}</p>
+        <aside class="notes">{speaker_notes}</aside>
+      </section>
+
+      <section data-auto-animate data-background-gradient="{gradient_css}">
+        <h2>{slide_title}</h2>
+        <!-- content -->
+        <aside class="notes">{speaker_notes}</aside>
+      </section>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <script>
+    Reveal.initialize({
+      hash: true,
+      transition: '{html_transition}',
+      transitionSpeed: 'default',
+      backgroundTransition: 'fade',
+      slideNumber: 'c/t',
+      controls: true,
+      progress: true,
+      center: true,
+    });
+  </script>
+</body>
+</html>
+```
+
+### Animation Density Rules
+
+| `html_animation` | Implementation |
+|------------------|----------------|
+| `minimal` | Do not use `data-auto-animate`; use `transition: 'fade'`; no gradient background. |
+| `moderate` | Add `data-auto-animate` to selected sections; use the chosen transition; add gradients to key slides only. |
+| `rich` | Add `data-auto-animate` to all sections; use the chosen transition; use gradients throughout, including the title slide. |
+
+### PDF Export
+
+Append `?print-pdf` to the URL, open in Chrome/Edge, press Cmd+P, choose Save as PDF, disable headers/footers, and use landscape A4.
+
+### Speaker Notes
+
+Use `<aside class="notes">` inside each `<section>`. Press `S` to open presenter view.
+
+### HTML QA Checklist
+
+- [ ] Open in Chrome/Safari; deck loads without console errors.
+- [ ] All slides advance correctly with arrow keys and spacebar.
+- [ ] No text overflows slide boundaries.
+- [ ] Gradients render as expected.
+- [ ] Speaker notes are visible in presenter view (`S` key).
+- [ ] `?print-pdf` renders all slides.
+- [ ] File is self-contained except pinned Reveal.js CDN links; no broken local paths.
 
 ### Codex Mode — Presentation Director First
 
@@ -302,7 +418,10 @@ For batch or background runs, use `--no-open`, but still pair it with `serve-wai
 python3 scripts/presentation_director.py prompt --task "<short task slug>" --kind initial
 ```
 
-6. Only now call Codex Presentations.
+6. Route generation by `output_format` in the confirmed brief:
+   - `html-revealjs`: write Reveal.js HTML directly; do NOT call Presentations plugin.
+   - `pptx`: call Codex Presentations.
+   - `both`: call Codex Presentations for PPTX, then write Reveal.js HTML directly.
 
 After v1 is generated, render Director pages and open the style review page. Use the local Director server for click-to-submit behavior; opening `style-review.html` directly is only a static preview. Wait for `revision.ready` if the user chooses a revision, then use:
 
@@ -324,7 +443,7 @@ Do not bypass this flow in an interactive Codex session unless the user explicit
 
 ## Claude / Offline / HTML Execution Steps
 
-The steps below are for environments without Codex Presentations, or for HTML output. Do not run them before v1 in Codex net-new PPTX mode unless the user explicitly asks for a deck.md/design-lock workflow.
+The steps below are for environments without Codex Presentations, for Claude/offline PPTX fallback, or for Reveal.js HTML output. For Codex `pptx` mode, do not run the full deck.md/design-lock workflow before v1 unless the user explicitly asks for it.
 
 ### Claude Step 1 — Classify the Input
 
@@ -530,7 +649,7 @@ Read `references/prompt-templates.md` for ready-to-use prompts.
 
 - In Codex: use Template A (Presentations plugin)
 - In Claude Code: use Template B (pptxgenjs fallback)
-- HTML deck (either environment): use Template C (html-ppt-skill or guizang-ppt-skill)
+- HTML deck (either environment): write Reveal.js 5.1.0 HTML directly using the spec above
 
 Before generating a net-new deck in a workspace that has Presentation Director, run:
 

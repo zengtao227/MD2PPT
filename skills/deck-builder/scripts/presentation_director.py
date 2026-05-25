@@ -25,7 +25,7 @@ import sys
 import threading
 import time
 import webbrowser
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -64,13 +64,17 @@ UI_COPY: dict[str, dict[str, str]] = {
     "zh": {
         "brief_gate": "Brief Confirmation Gate",
         "confirm_title": "确认生成简报",
-        "confirm_intro": "请最后确认一次。只有点击“确认并开始生成”后，agent 才应调用 Codex Presentations plugin。",
+        "confirm_intro": "请最后确认一次。只有点击“确认并开始生成”后，agent 才应按所选输出格式开始生成。",
         "topic": "主题",
         "sources": "资料来源",
         "summary": "选择汇总",
         "item": "项目",
         "selection": "选择",
         "source": "来源",
+        "output_format": "输出格式",
+        "html_transition": "过渡效果",
+        "html_animation": "动画密度",
+        "html_gradient": "渐变背景",
         "visual_direction": "选定视觉方向",
         "background": "背景策略",
         "layout": "版式节奏",
@@ -94,13 +98,17 @@ UI_COPY: dict[str, dict[str, str]] = {
     "en": {
         "brief_gate": "Brief Confirmation Gate",
         "confirm_title": "Confirm Generation Brief",
-        "confirm_intro": "Please review the plan one last time. The agent should call the Codex Presentations plugin only after you click \"Confirm and start generation.\"",
+        "confirm_intro": "Please review the plan one last time. The agent should start generation for the selected output format only after you click \"Confirm and start generation.\"",
         "topic": "Topic",
         "sources": "Source Material",
         "summary": "Selection Summary",
         "item": "Item",
         "selection": "Selection",
         "source": "Source",
+        "output_format": "Output Format",
+        "html_transition": "Transition",
+        "html_animation": "Animation density",
+        "html_gradient": "Gradient background",
         "visual_direction": "Selected Visual Direction",
         "background": "Background Strategy",
         "layout": "Layout Rhythm",
@@ -124,13 +132,17 @@ UI_COPY: dict[str, dict[str, str]] = {
     "de": {
         "brief_gate": "Bestätigung des Briefings",
         "confirm_title": "Generierungsbrief bestätigen",
-        "confirm_intro": "Bitte prüfen Sie den Plan ein letztes Mal. Erst nach dem Klick auf \"Bestätigen und Generierung starten\" sollte der Agent das Codex Presentations plugin aufrufen.",
+        "confirm_intro": "Bitte prüfen Sie den Plan ein letztes Mal. Erst nach dem Klick auf \"Bestätigen und Generierung starten\" sollte der Agent die Generierung im gewählten Ausgabeformat starten.",
         "topic": "Thema",
         "sources": "Quellenmaterial",
         "summary": "Zusammenfassung der Auswahl",
         "item": "Punkt",
         "selection": "Auswahl",
         "source": "Quelle",
+        "output_format": "Ausgabeformat",
+        "html_transition": "Übergang",
+        "html_animation": "Animationsdichte",
+        "html_gradient": "Verlaufshintergrund",
         "visual_direction": "Ausgewählte visuelle Richtung",
         "background": "Hintergrundstrategie",
         "layout": "Layoutrhythmus",
@@ -154,13 +166,17 @@ UI_COPY: dict[str, dict[str, str]] = {
     "fr": {
         "brief_gate": "Validation du brief",
         "confirm_title": "Confirmer le brief de génération",
-        "confirm_intro": "Veuillez relire le plan une dernière fois. L'agent ne doit appeler Codex Presentations qu'après votre clic sur \"Confirmer et lancer la génération\".",
+        "confirm_intro": "Veuillez relire le plan une dernière fois. L'agent ne doit lancer la génération du format choisi qu'après votre clic sur \"Confirmer et lancer la génération\".",
         "topic": "Sujet",
         "sources": "Sources",
         "summary": "Résumé des choix",
         "item": "Élément",
         "selection": "Choix",
         "source": "Source",
+        "output_format": "Format de sortie",
+        "html_transition": "Transition",
+        "html_animation": "Densité d'animation",
+        "html_gradient": "Fond dégradé",
         "visual_direction": "Direction visuelle sélectionnée",
         "background": "Stratégie de fond",
         "layout": "Rythme de mise en page",
@@ -184,13 +200,17 @@ UI_COPY: dict[str, dict[str, str]] = {
     "it": {
         "brief_gate": "Conferma del brief",
         "confirm_title": "Conferma il brief di generazione",
-        "confirm_intro": "Rivedi il piano un'ultima volta. L'agente dovrebbe chiamare Codex Presentations solo dopo il clic su \"Conferma e avvia la generazione\".",
+        "confirm_intro": "Rivedi il piano un'ultima volta. L'agente dovrebbe avviare la generazione del formato scelto solo dopo il clic su \"Conferma e avvia la generazione\".",
         "topic": "Argomento",
         "sources": "Fonti",
         "summary": "Riepilogo delle scelte",
         "item": "Voce",
         "selection": "Scelta",
         "source": "Fonte",
+        "output_format": "Formato di output",
+        "html_transition": "Transizione",
+        "html_animation": "Densità animazione",
+        "html_gradient": "Sfondo sfumato",
         "visual_direction": "Direzione visiva selezionata",
         "background": "Strategia di sfondo",
         "layout": "Ritmo del layout",
@@ -214,13 +234,17 @@ UI_COPY: dict[str, dict[str, str]] = {
     "es": {
         "brief_gate": "Confirmación del brief",
         "confirm_title": "Confirmar el brief de generación",
-        "confirm_intro": "Revisa el plan una última vez. El agente solo debe llamar a Codex Presentations después de que hagas clic en \"Confirmar e iniciar generación\".",
+        "confirm_intro": "Revisa el plan una última vez. El agente solo debe iniciar la generación del formato elegido después de que hagas clic en \"Confirmar e iniciar generación\".",
         "topic": "Tema",
         "sources": "Fuentes",
         "summary": "Resumen de selecciones",
         "item": "Elemento",
         "selection": "Selección",
         "source": "Fuente",
+        "output_format": "Formato de salida",
+        "html_transition": "Transición",
+        "html_animation": "Densidad de animación",
+        "html_gradient": "Fondo degradado",
         "visual_direction": "Dirección visual seleccionada",
         "background": "Estrategia de fondo",
         "layout": "Ritmo de diseño",
@@ -421,6 +445,7 @@ for language, copy_items in ADDITIONAL_UI_COPY.items():
 QUESTION_TITLE_L10N: dict[str, dict[str, str]] = {
     "en": {
         "deck_type": "PPT Type",
+        "output_format": "Output Format",
         "research_strategy": "Research Strategy",
         "audience": "Audience",
         "goal": "Goal",
@@ -434,6 +459,7 @@ QUESTION_TITLE_L10N: dict[str, dict[str, str]] = {
     },
     "de": {
         "deck_type": "PPT-Typ",
+        "output_format": "Ausgabeformat",
         "research_strategy": "Recherche-Strategie",
         "audience": "Zielgruppe",
         "goal": "Ziel",
@@ -447,6 +473,7 @@ QUESTION_TITLE_L10N: dict[str, dict[str, str]] = {
     },
     "fr": {
         "deck_type": "Type de PPT",
+        "output_format": "Format de sortie",
         "research_strategy": "Stratégie de recherche",
         "audience": "Public",
         "goal": "Objectif",
@@ -460,6 +487,7 @@ QUESTION_TITLE_L10N: dict[str, dict[str, str]] = {
     },
     "it": {
         "deck_type": "Tipo di PPT",
+        "output_format": "Formato di output",
         "research_strategy": "Strategia di ricerca",
         "audience": "Pubblico",
         "goal": "Obiettivo",
@@ -473,6 +501,7 @@ QUESTION_TITLE_L10N: dict[str, dict[str, str]] = {
     },
     "es": {
         "deck_type": "Tipo de PPT",
+        "output_format": "Formato de salida",
         "research_strategy": "Estrategia de investigación",
         "audience": "Audiencia",
         "goal": "Objetivo",
@@ -494,6 +523,11 @@ CHOICE_LABEL_L10N: dict[str, dict[str, dict[str, str]]] = {
             "knowledge-teaching": "Academic / course / knowledge explanation",
             "sales-product": "Sales / product presentation",
             "custom": "Custom",
+        },
+        "output_format": {
+            "html-revealjs": "HTML (Reveal.js)",
+            "pptx": "PPTX (PowerPoint)",
+            "both": "HTML + PPTX (Both)",
         },
         "research_strategy": {
             "hybrid-deep-research": "Hybrid: external Deep Research + Codex verification",
@@ -579,6 +613,11 @@ CHOICE_LABEL_L10N: dict[str, dict[str, dict[str, str]]] = {
             "knowledge-teaching": "Akademische / Kurs- / Wissensvermittlung",
             "sales-product": "Vertrieb / Produktpräsentation",
             "custom": "Benutzerdefiniert",
+        },
+        "output_format": {
+            "html-revealjs": "HTML (Reveal.js)",
+            "pptx": "PPTX (PowerPoint)",
+            "both": "HTML + PPTX (Beide)",
         },
         "research_strategy": {
             "hybrid-deep-research": "Hybrid: externe Deep Research + Codex-Prüfung",
@@ -677,6 +716,7 @@ ADDITIONAL_QUESTION_TITLE_L10N: dict[str, dict[str, str]] = {
 QUESTION_PROMPT_L10N: dict[str, dict[str, str]] = {
     "en": {
         "deck_type": "What kind of PPT are you creating?",
+        "output_format": "Which presentation output format should be generated?",
         "research_strategy": "If the material is incomplete, how should research material be gathered first?",
         "audience": "Who is the main audience for this PPT?",
         "goal": "What is the main goal of this PPT?",
@@ -695,6 +735,7 @@ QUESTION_PROMPT_L10N: dict[str, dict[str, str]] = {
     },
     "de": {
         "deck_type": "Welche Art von PPT soll erstellt werden?",
+        "output_format": "Welches Präsentationsformat soll erzeugt werden?",
         "research_strategy": "Wenn das Material unvollständig ist, wie sollen zuerst Recherchematerialien beschafft werden?",
         "audience": "Für wen ist diese PPT hauptsächlich gedacht?",
         "goal": "Was ist das Hauptziel dieser PPT?",
@@ -800,6 +841,27 @@ ADDITIONAL_CHOICE_LABEL_L10N: dict[str, dict[str, dict[str, str]]] = {
             "custom": "Benutzerdefiniert",
         },
     },
+    "fr": {
+        "output_format": {
+            "html-revealjs": "HTML (Reveal.js)",
+            "pptx": "PPTX (PowerPoint)",
+            "both": "HTML + PPTX (Les deux)",
+        },
+    },
+    "it": {
+        "output_format": {
+            "html-revealjs": "HTML (Reveal.js)",
+            "pptx": "PPTX (PowerPoint)",
+            "both": "HTML + PPTX (Entrambi)",
+        },
+    },
+    "es": {
+        "output_format": {
+            "html-revealjs": "HTML (Reveal.js)",
+            "pptx": "PPTX (PowerPoint)",
+            "both": "HTML + PPTX (Ambos)",
+        },
+    },
 }
 
 for language, title_items in ADDITIONAL_QUESTION_TITLE_L10N.items():
@@ -863,6 +925,9 @@ class VisualCandidate:
     image_strategy: str
     inspiration: str
     risk: str
+    html_transition: str = "slide"
+    html_animation: str = "minimal"
+    html_gradient: str = ""
 
 
 INTAKE_QUESTIONS: tuple[Question, ...] = (
@@ -878,6 +943,29 @@ INTAKE_QUESTIONS: tuple[Question, ...] = (
             Choice("knowledge-teaching", "学术 / 课程 / 知识讲解", "把复杂材料重组成清晰知识结构。"),
             Choice("sales-product", "客户销售 / 产品介绍", "展示痛点、方案、demo 和价值证明。"),
             Choice("custom", "自定义", "我有自己的类型描述。"),
+        ),
+    ),
+    Question(
+        key="output_format",
+        title="输出格式",
+        prompt="生成哪种格式的演示文稿？",
+        default="html-revealjs",
+        choices=(
+            Choice(
+                "html-revealjs",
+                "HTML（Reveal.js）",
+                "演示场景首选：动画过渡、presenter mode、浏览器即用，支持 ?print-pdf 导出。",
+            ),
+            Choice(
+                "pptx",
+                "PPTX（PowerPoint）",
+                "需要可编辑交付、或对方要求 PowerPoint 格式时使用。",
+            ),
+            Choice(
+                "both",
+                "HTML + PPTX（两者都生成）",
+                "HTML 用于演示，PPTX 用于编辑分享。两版视觉风格会有差异：HTML 版使用渐变背景和动画，PPTX 版使用相同调色板的纯色背景。",
+            ),
         ),
     ),
     Question(
@@ -1192,6 +1280,44 @@ def t(ui_language: str, key: str) -> str:
     return UI_COPY["zh"].get(key, key)
 
 
+def generation_strategy_text(output_format: str, task_dir: Path, ui_language: str) -> str:
+    task_path: str = str(task_dir)
+    messages: dict[str, dict[str, str]] = {
+        "zh": {
+            "html-revealjs": f"将生成 Reveal.js HTML 演示文稿，保存到 {task_path}/final/<name>.html。用浏览器打开即可演示；附加 ?print-pdf 可导出 PDF。",
+            "pptx": f"先生成 v1 PPTX 和 contact sheet，集中保存到 {task_path}，然后打开 style-review.html 供选择是否重绘。",
+            "both": f"将分别生成 HTML（Reveal.js）和 PPTX 两个版本，均保存到 {task_path}/final/。两版视觉风格会有差异：HTML 使用渐变背景和动画，PPTX 使用纯色背景。",
+        },
+        "en": {
+            "html-revealjs": f"Generate a Reveal.js HTML presentation and save it to {task_path}/final/<name>.html. Open it in a browser to present; append ?print-pdf to export PDF.",
+            "pptx": f"Generate the v1 PPTX and contact sheet first, save them under {task_path}, then open style-review.html so you can decide whether to redraw the deck.",
+            "both": f"Generate both HTML (Reveal.js) and PPTX versions under {task_path}/final/. The visual systems intentionally differ: HTML uses gradients and animation, while PPTX uses solid-color equivalents.",
+        },
+        "de": {
+            "html-revealjs": f"Es wird eine Reveal.js-HTML-Präsentation erzeugt und unter {task_path}/final/<name>.html gespeichert. Im Browser öffnen; mit ?print-pdf als PDF exportieren.",
+            "pptx": f"Zuerst werden v1-PPTX und Contact Sheet erzeugt und unter {task_path} gespeichert. Danach wird style-review.html geöffnet, damit Sie entscheiden können, ob das Deck visuell überarbeitet werden soll.",
+            "both": f"Es werden HTML (Reveal.js) und PPTX unter {task_path}/final/ erzeugt. Die visuellen Systeme unterscheiden sich bewusst: HTML nutzt Verläufe und Animationen, PPTX nutzt entsprechende Vollfarben.",
+        },
+        "fr": {
+            "html-revealjs": f"Générer une présentation HTML Reveal.js dans {task_path}/final/<name>.html. Ouvrez-la dans un navigateur; ajoutez ?print-pdf pour exporter en PDF.",
+            "pptx": f"Générer d'abord le PPTX v1 et la planche de contact dans {task_path}, puis ouvrir style-review.html pour décider d'une éventuelle refonte visuelle.",
+            "both": f"Générer les versions HTML (Reveal.js) et PPTX dans {task_path}/final/. Les styles diffèrent volontairement: HTML utilise des dégradés et animations, PPTX utilise des aplats équivalents.",
+        },
+        "it": {
+            "html-revealjs": f"Genera una presentazione HTML Reveal.js in {task_path}/final/<name>.html. Aprila nel browser; aggiungi ?print-pdf per esportare in PDF.",
+            "pptx": f"Genera prima il PPTX v1 e il contact sheet in {task_path}, poi apri style-review.html per decidere se ridisegnare il deck.",
+            "both": f"Genera sia HTML (Reveal.js) sia PPTX in {task_path}/final/. Gli stili differiscono intenzionalmente: HTML usa gradienti e animazioni, PPTX usa colori pieni equivalenti.",
+        },
+        "es": {
+            "html-revealjs": f"Genera una presentación HTML Reveal.js en {task_path}/final/<name>.html. Ábrela en el navegador; añade ?print-pdf para exportar a PDF.",
+            "pptx": f"Primero genera el PPTX v1 y la hoja de contacto en {task_path}, y luego abre style-review.html para decidir si redibujar el deck.",
+            "both": f"Genera versiones HTML (Reveal.js) y PPTX en {task_path}/final/. Los estilos difieren a propósito: HTML usa degradados y animación, PPTX usa colores sólidos equivalentes.",
+        },
+    }
+    language_messages: dict[str, str] = messages.get(ui_language, messages["en"])
+    return language_messages.get(output_format, language_messages["pptx"])
+
+
 def localized_question_title(question: Question, ui_language: str) -> str:
     if ui_language == "zh":
         return question.title
@@ -1374,6 +1500,13 @@ def selection_value(selections: JsonDict, key: str, default: str = "") -> str:
     return default
 
 
+def output_format_from_selections(selections: JsonDict, default: str = "pptx") -> str:
+    output_format: str = selection_value(selections, "output_format", default)
+    if output_format in {"html-revealjs", "pptx", "both"}:
+        return output_format
+    return default
+
+
 def visual_candidate_to_json(candidate: VisualCandidate) -> JsonDict:
     return {
         "key": candidate.key,
@@ -1389,6 +1522,9 @@ def visual_candidate_to_json(candidate: VisualCandidate) -> JsonDict:
         "image_strategy": candidate.image_strategy,
         "inspiration": candidate.inspiration,
         "risk": candidate.risk,
+        "html_transition": candidate.html_transition,
+        "html_animation": candidate.html_animation,
+        "html_gradient": candidate.html_gradient,
     }
 
 
@@ -1407,6 +1543,31 @@ def classify_visual_context(topic: str, selections: JsonDict) -> str:
     if deck_type in {"investor-pitch", "sales-product"}:
         return "market"
     return "general"
+
+
+def html_profile_for_candidate(context: str, candidate: VisualCandidate) -> tuple[str, str, str]:
+    text: str = f"{context} {candidate.key} {candidate.name} {candidate.summary}".lower()
+    if any(token in text for token in ("pitch", "investor", "studio-pitch", "路演", "投资")):
+        return "zoom", "rich", "linear-gradient(135deg, #1a1a2e, #16213e, #0f3460)"
+    if any(token in text for token in ("product", "launch", "brand", "studio-visual", "creative", "产品", "创意")):
+        return "convex", "rich", "linear-gradient(135deg, #667eea, #764ba2)"
+    if context == "research" or any(token in text for token in ("academic", "clinical", "medical", "atlas", "research", "学术", "知识")):
+        return "fade", "minimal", "linear-gradient(135deg, #f5f7fa, #c3cfe2)"
+    if any(token in text for token in ("boardroom", "consulting", "roadmap", "restrained", "正式", "克制")):
+        return "fade", "minimal", ""
+    if context == "engineering" or any(token in text for token in ("engineering", "terminal", "system", "signal", "architecture", "科技", "工程")):
+        return "slide", "moderate", "linear-gradient(135deg, #0f0c29, #302b63, #24243e)"
+    return "fade", "minimal", ""
+
+
+def with_html_profile(context: str, candidate: VisualCandidate) -> VisualCandidate:
+    html_transition, html_animation, html_gradient = html_profile_for_candidate(context, candidate)
+    return replace(
+        candidate,
+        html_transition=html_transition,
+        html_animation=html_animation,
+        html_gradient=html_gradient,
+    )
 
 
 def build_visual_candidates(topic: str, selections: JsonDict) -> tuple[VisualCandidate, ...]:
@@ -1695,7 +1856,8 @@ def build_visual_candidates(topic: str, selections: JsonDict) -> tuple[VisualCan
             "表现力强时更需要事实来源压住可信度。",
         ),
     )
-    return libraries.get(context, default_candidates)
+    selected_candidates: tuple[VisualCandidate, ...] = libraries.get(context, default_candidates)
+    return tuple(with_html_profile(context, candidate) for candidate in selected_candidates)
 
 
 def html_page(title: str, body: str, ui_language: str = "zh") -> str:
@@ -1799,6 +1961,9 @@ def html_page(title: str, body: str, ui_language: str = "zh") -> str:
     .mini-slide span {{ display: block; width: 60%; height: 5px; border-radius: 99px; opacity: .9; }}
     .mini-bars {{ display: grid; gap: 4px; }}
     .mini-bars i {{ display: block; height: 5px; border-radius: 99px; opacity: .86; }}
+    .html-field {{ display: flex; gap: 8px; align-items: center; margin: 6px 0; font-size: 13px; }}
+    .html-field .label {{ color: var(--muted); min-width: 86px; }}
+    .html-field .value {{ color: var(--ink); overflow-wrap: anywhere; }}
     .contact-sheet {{
       width: 100%;
       max-height: 520px;
@@ -1862,6 +2027,14 @@ def build_draft_brief(
     source_items: list[JsonDict] = build_source_items(sources)
     fallback_text: str = " ".join([topic, task_slug, *sources])
     resolved_ui_language: str = resolve_ui_language(ui_language, conversation_text, fallback_text)
+    default_selections: JsonDict = {
+        question.key: {
+            "value": default_intake_value(question, sources, resolved_ui_language),
+            "label": selected_choice(question, default_intake_value(question, sources, resolved_ui_language)).label,
+            "source": "default",
+        }
+        for question in INTAKE_QUESTIONS
+    }
     return {
         "version": "0.1",
         "task_slug": task_slug,
@@ -1870,14 +2043,8 @@ def build_draft_brief(
         "ui_language_source": "explicit" if ui_language in SUPPORTED_UI_LANGUAGES else "auto-detected",
         "conversation_text": conversation_text,
         "sources": source_items,
-        "selections": {
-            question.key: {
-                "value": default_intake_value(question, sources, resolved_ui_language),
-                "label": selected_choice(question, default_intake_value(question, sources, resolved_ui_language)).label,
-                "source": "default",
-            }
-            for question in INTAKE_QUESTIONS
-        },
+        "selections": default_selections,
+        "output_format": output_format_from_selections(default_selections, "pptx"),
         "risks": infer_risks(source_items),
         "confirmed": False,
         "created_at": datetime.now().isoformat(timespec="seconds"),
@@ -1981,6 +2148,7 @@ def apply_intake_selection(draft: JsonDict, form: dict[str, list[str]]) -> JsonD
     brief["sources"] = selected_source_items
     brief["risks"] = infer_risks(selected_source_items)
     brief["selections"] = selections
+    brief["output_format"] = output_format_from_selections(selections, "pptx")
     brief["updated_at"] = datetime.now().isoformat(timespec="seconds")
     brief["confirmed"] = False
     return brief
@@ -2228,6 +2396,8 @@ def render_visual_inspiration(task_dir: Path) -> str:
     topic: str = str(selected.get("topic", draft.get("topic", "")))
     selections: JsonDict = selected.get("selections", {})
     candidates: tuple[VisualCandidate, ...] = build_visual_candidates(topic, selections)
+    output_format: str = str(selected.get("output_format", output_format_from_selections(selections, "pptx")))
+    show_html_fields: bool = output_format in {"html-revealjs", "both"}
     visual_direction: JsonDict = selected.get("visual_direction", {})
     current_key: str = str(
         visual_direction.get("selected_candidate", {}).get("key", candidates[0].key)
@@ -2235,7 +2405,7 @@ def render_visual_inspiration(task_dir: Path) -> str:
         else candidates[0].key
     )
     candidate_cards: list[str] = [
-        render_visual_candidate_card(candidate, current_key == candidate.key, ui_language)
+        render_visual_candidate_card(candidate, current_key == candidate.key, ui_language, show_html_fields)
         for candidate in candidates
     ]
     body: str = f"""<div class="topline">{html.escape(t(ui_language, "visual_gate"))}</div>
@@ -2261,7 +2431,12 @@ def render_visual_inspiration(task_dir: Path) -> str:
     return html_page(t(ui_language, "visual_title"), body, ui_language)
 
 
-def render_visual_candidate_card(candidate: VisualCandidate, checked: bool, ui_language: str = "zh") -> str:
+def render_visual_candidate_card(
+    candidate: VisualCandidate,
+    checked: bool,
+    ui_language: str = "zh",
+    show_html_fields: bool = False,
+) -> str:
     is_checked: str = " checked" if checked else ""
     candidate_json: JsonDict = visual_candidate_to_json(candidate)
     swatches: str = "".join(
@@ -2272,6 +2447,28 @@ def render_visual_candidate_card(candidate: VisualCandidate, checked: bool, ui_l
     ink_color: str = candidate.palette[1]
     accent: str = candidate.palette[2]
     accent_2: str = candidate.palette[3]
+    gradient_preview: str = ""
+    if candidate.html_gradient:
+        gradient_label: str = candidate.html_gradient[:30]
+        gradient_preview = (
+            f"""<div class="html-field">
+    <span class="label">{html.escape(t(ui_language, "html_gradient"))}</span>
+    <span class="value" style="background: {html.escape(candidate.html_gradient)}; color: white; padding: 2px 8px; border-radius: 4px;">{html.escape(gradient_label)}</span>
+  </div>"""
+        )
+    html_fields: str = ""
+    if show_html_fields:
+        html_fields = f"""<div class="section" style="margin-top: 12px; padding: 10px;">
+  <div class="html-field">
+    <span class="label">{html.escape(t(ui_language, "html_transition"))}</span>
+    <span class="value">{html.escape(candidate.html_transition)}</span>
+  </div>
+  <div class="html-field">
+    <span class="label">{html.escape(t(ui_language, "html_animation"))}</span>
+    <span class="value">{html.escape(candidate.html_animation)}</span>
+  </div>
+  {gradient_preview}
+</div>"""
     return f"""<label class="option candidate">
   <input type="radio" name="visual_candidate" value="{html.escape(candidate.key)}"{is_checked}>
   <strong>{html.escape(candidate.name)}</strong>
@@ -2294,6 +2491,7 @@ def render_visual_candidate_card(candidate: VisualCandidate, checked: bool, ui_l
   <p><strong>{html.escape(t(ui_language, "best_for"))}:</strong> {html.escape(localized_visual_field(candidate_json, "best_for", ui_language))}</p>
   <p><strong>{html.escape(t(ui_language, "background"))}:</strong> {html.escape(localized_visual_field(candidate_json, "background", ui_language))}</p>
   <p><strong>{html.escape(t(ui_language, "chart"))}:</strong> {html.escape(localized_visual_field(candidate_json, "chart", ui_language))}</p>
+  {html_fields}
   <p><strong>{html.escape(t(ui_language, "inspiration"))}:</strong> {html.escape(localized_visual_field(candidate_json, "inspiration", ui_language))}</p>
   <p class="meta"><strong>{html.escape(t(ui_language, "risk"))}:</strong> {html.escape(localized_visual_field(candidate_json, "risk", ui_language))}</p>
 </label>"""
@@ -2319,6 +2517,7 @@ def render_confirm(task_dir: Path) -> str:
     confirm_token: str = ensure_confirm_token(task_dir)
     rows: list[str] = []
     selections: JsonDict = selected.get("selections", {})
+    output_format: str = str(selected.get("output_format", output_format_from_selections(selections, "pptx")))
     for question in INTAKE_QUESTIONS:
         raw_item: Any = selections.get(question.key, {})
         item: JsonDict
@@ -2389,7 +2588,7 @@ def render_confirm(task_dir: Path) -> str:
 </section>
 <section class="section">
   <h2>{html.escape(t(ui_language, "generation_strategy"))}</h2>
-  <p>{html.escape(t(ui_language, "generation_strategy_text").format(task_dir=str(task_dir)))}</p>
+  <p>{html.escape(generation_strategy_text(output_format, task_dir, ui_language))}</p>
 </section>
 <form method="post" action="/api/confirm">
   <input type="hidden" name="confirm_token" value="{html.escape(confirm_token)}">
@@ -2542,22 +2741,72 @@ def initial_prompt(task_dir: Path) -> str:
     if not brief:
         return "No confirmed brief found. Confirm intake first."
     script_path: Path = Path(__file__).resolve()
-    return f"""Use the Codex Presentations skill and artifact-tool presentation JSX.
-
-Confirmed brief:
+    output_format: str = str(brief.get("output_format", output_format_from_selections(brief.get("selections", {}), "pptx")))
+    common_rules: str = f"""Confirmed brief:
 {json.dumps(brief, ensure_ascii=False, indent=2)}
 
 Rules:
-- Before calling Codex Presentations, run:
+- Before generating, run:
   python3 "{script_path}" --base-dir "{task_dir.parent.parent}" guard --task "{task_dir.name}"
   If the guard fails, open the confirmation page through serve-wait and continue only after the user's HTML click:
   python3 "{script_path}" --base-dir "{task_dir.parent.parent}" serve-wait --task "{task_dir.name}" --for confirmed
-- Audience, goal, research strategy, source boundary, content language, logo policy, image policy, selected visual direction, and output constraints are locked.
+- Audience, goal, output_format, research strategy, source boundary, content language, logo policy, image policy, selected visual direction, and output constraints are locked.
 - Do not fabricate metrics, logos, customer names, screenshots, or official-looking brand assets.
 - Use official or user-provided brand assets only.
 - AI images are allowed only according to the confirmed image policy.
-- Composition, layout rhythm, chart treatment, typography hierarchy, and visual expression should follow the selected visual candidate while still using Presentations' judgment.
+- Composition, layout rhythm, chart treatment, typography hierarchy, and visual expression should follow the selected visual candidate.
 - Do not use a fixed design-lock unless the confirmed brief explicitly asks for it.
+"""
+
+    html_output: Path = task_dir / "final" / f"{task_dir.name}.html"
+    pptx_output: Path = task_dir / "v1" / "final.pptx"
+
+    if output_format == "html-revealjs":
+        return f"""Write a Reveal.js 5.1.0 HTML presentation directly. Do NOT call the Codex Presentations plugin.
+
+{common_rules}
+
+Reveal.js requirements:
+- Use pinned CDN links for reveal.js@5.1.0 reset.css, reveal.css, a built-in theme, and reveal.js.
+- Use `html_transition`, `html_animation`, and `html_gradient` from the selected visual candidate.
+- Put speaker notes in `<aside class="notes">` on each slide.
+- Keep the file browser-runnable and save it to {html_output}.
+- Include PDF export guidance: append `?print-pdf`, print from Chrome/Edge, landscape, no headers/footers.
+
+QA:
+- Open in a browser or capture screenshots to verify slide navigation, gradients, speaker notes, and no text overflow.
+- Return HTML path, screenshot/QA evidence, and remaining risks.
+"""
+
+    if output_format == "both":
+        return f"""Generate both outputs: first editable PPTX via Codex Presentations, then Reveal.js 5.1.0 HTML directly.
+
+{common_rules}
+
+PPTX route:
+- Use the Codex Presentations skill and artifact-tool presentation JSX.
+- Use the Presentations internal scratch workspace as required by the plugin.
+- Copy the editable PPTX to {pptx_output}.
+- Copy per-slide preview PNGs to {task_dir / "v1" / "slides"}.
+- Copy the contact sheet and a concise QA summary to {task_dir / "v1"}.
+- Generate layout JSON and QA notes in the Presentations workspace.
+- PPTX uses the same palette as the HTML direction, but with solid-color backgrounds instead of gradients.
+
+HTML route:
+- Write Reveal.js HTML directly; do NOT call Presentations plugin for HTML.
+- Use pinned reveal.js@5.1.0 CDN links.
+- Use `html_transition`, `html_animation`, and `html_gradient` from the selected visual candidate.
+- Save the HTML deck to {html_output}.
+
+QA:
+- PPTX QA must include rendered no-overlap checks and a contact sheet.
+- HTML QA must include browser load/navigation and text-overflow checks.
+- Return PPTX path, HTML path, contact sheet path, QA summary, and remaining risks.
+"""
+
+    return f"""Use the Codex Presentations skill and artifact-tool presentation JSX.
+
+{common_rules}
 
 Output:
 - Use the Presentations internal scratch workspace as required by the plugin.
@@ -2810,6 +3059,7 @@ def command_init(args: argparse.Namespace) -> None:
         args.conversation_text,
     )
     write_json(task_dir / "brief-draft.json", brief)
+    write_json(task_dir / "brief" / "draft-brief.json", brief)
     render_all_pages(task_dir)
     print(f"Presentation Director task created: {task_dir}")
     print(f"Open intake page: {task_dir / 'intake.html'}")
