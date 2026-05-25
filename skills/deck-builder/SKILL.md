@@ -407,20 +407,43 @@ These are reusable design rules for the Biotech Pipeline dark theme and similar 
 
 #### Cover Title 3D System
 
-All three cover title lines share the **same `filter: drop-shadow` depth parameters** so they appear as one cohesive block with consistent depth:
+All three cover title lines share the **same three-layer depth structure** so they appear as one cohesive 3D block. On dark backgrounds, black shadows are invisible — the visible depth comes from the contrast between a **top light reflection** and a **hard extrusion shadow** below.
 
 ```css
-/* Shared depth — apply to .grad-two and .grad-light */
-filter: drop-shadow(0 2px 2px rgba(0,0,0,.45)) drop-shadow(0 4px 10px rgba(0,0,0,.28));
+/*
+  Layer 1 — top light reflection  (implies a lit surface facing upward)
+  Layer 2 — hard bottom edge      (pure black; the "extruded" face)
+  Layer 3 — soft depth volume     (distance from the slide surface)
+*/
 
-/* Cover line 3 (.grad-cyan .glow-hero) also includes the same depth in its keyframes */
+/* Line 1: tri-color gradient */
+.grad-two {
+  filter:
+    drop-shadow(0 -1px 0 rgba(255,255,255,.22))
+    drop-shadow(0 2px 0 rgba(0,0,0,.92))
+    drop-shadow(0 5px 10px rgba(0,0,0,.6));
+}
+
+/* Line 2: near-white gradient */
+.grad-light {
+  filter:
+    drop-shadow(0 -1px 0 rgba(255,255,255,.35))   /* stronger — white text needs more edge */
+    drop-shadow(0 2px 0 rgba(0,0,0,.92))
+    drop-shadow(0 5px 10px rgba(0,0,0,.6));
+}
+
+/* Line 3: cyan + glow-hero — same 3D layers inside keyframes */
 @keyframes glowHero {
-  0%,100%{ filter: drop-shadow(0 2px 2px rgba(0,0,0,.45))
-                   drop-shadow(0 4px 10px rgba(0,0,0,.28))
-                   drop-shadow(0 0 6px rgba(76,201,240,.5)); }
-  50%    { filter: drop-shadow(0 2px 2px rgba(0,0,0,.45))
-                   drop-shadow(0 4px 10px rgba(0,0,0,.28))
-                   drop-shadow(0 0 20px rgba(76,201,240,.9)); }
+  0%,100% { filter:
+    drop-shadow(0 -1px 0 rgba(76,201,240,.3))     /* cyan top edge */
+    drop-shadow(0 2px 0 rgba(0,0,0,.92))
+    drop-shadow(0 5px 10px rgba(0,0,0,.6))
+    drop-shadow(0 0 7px rgba(76,201,240,.5)); }
+  50%     { filter:
+    drop-shadow(0 -1px 0 rgba(76,201,240,.4))
+    drop-shadow(0 2px 0 rgba(0,0,0,.92))
+    drop-shadow(0 5px 10px rgba(0,0,0,.6))
+    drop-shadow(0 0 20px rgba(76,201,240,.9)); }
 }
 ```
 
