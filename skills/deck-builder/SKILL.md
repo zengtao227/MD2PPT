@@ -344,13 +344,58 @@ This applies to both Codex and Claude Code. In Codex, write the HTML as a file a
 </html>
 ```
 
+### Content Density Rules — MUST follow to prevent overflow
+
+These rules are hard constraints for every content slide. A slide that looks complete in source material may overflow a 1280×720 viewport. When in doubt, split into two slides.
+
+| Element | Limit |
+|---------|-------|
+| Bullet points per column / list | ≤ 5 items |
+| Words per bullet | ≤ 15 words |
+| Content sections per slide | ≤ 2 (e.g., two columns = 2 sections) |
+| Table rows (including header) | ≤ 8 rows |
+| Nested columns inside a two-col layout | No — each cell has at most one list or one diagram |
+| Font size floor | Never set `font-size` below `0.55em` to compensate for density |
+
+When source content exceeds these limits, **split the slide**, do not compress. Use a consistent title with a " (cont.)" suffix for the second slide.
+
+### CSS Overflow Safeguards — include in every generated HTML
+
+Add these rules to the `<style>` block of every HTML deck. They prevent content from escaping the slide boundary invisibly.
+
+```css
+/* Overflow safeguard — prevents content running off the bottom of slides */
+.reveal .slides section {
+  box-sizing: border-box;
+  height: 100%;
+}
+.slide-body {
+  overflow: hidden;
+  max-height: calc(100% - 2.8em); /* subtract slide-header height */
+  box-sizing: border-box;
+}
+/* Fallback for sections without a .slide-header */
+.reveal .slides section > *:not(aside) {
+  max-width: 100%;
+}
+```
+
+If the deck does not use a `.slide-body` wrapper, apply instead:
+
+```css
+.reveal .slides section {
+  overflow: hidden;
+  box-sizing: border-box;
+}
+```
+
 ### Animation Density Rules
 
 | `html_animation` | Implementation |
 |------------------|----------------|
-| `minimal` | Do not use `data-auto-animate`; use `transition: 'fade'`; no gradient background. |
-| `moderate` | Add `data-auto-animate` to selected sections; use the chosen transition; add gradients to key slides only. |
-| `rich` | Add `data-auto-animate` to all sections; use the chosen transition; use gradients throughout, including the title slide. |
+| `minimal` | Do not use `data-auto-animate`; use `transition: 'fade'`; no gradient background. Visually equivalent to a clean PPTX — intentionally restrained. |
+| `moderate` | Add `data-auto-animate` to selected sections; use the chosen transition; add gradients to key slides only (cover + section dividers). |
+| `rich` | Add `data-auto-animate` to all sections; use the chosen transition; use gradients throughout including title slide; add entrance animations via CSS `@keyframes` on key data elements. |
 
 ### PDF Export
 
@@ -364,11 +409,12 @@ Use `<aside class="notes">` inside each `<section>`. Press `S` to open presenter
 
 - [ ] Open in Chrome/Safari; deck loads without console errors.
 - [ ] All slides advance correctly with arrow keys and spacebar.
-- [ ] No text overflows slide boundaries.
-- [ ] Gradients render as expected.
+- [ ] **No text overflows slide boundaries** — scroll through every slide and confirm no content is cut off at the bottom or sides. If any slide overflows: split the slide or remove content, do not reduce font size below 0.55em.
+- [ ] Gradients render as expected (if `html_animation` is `moderate` or `rich`).
 - [ ] Speaker notes are visible in presenter view (`S` key).
-- [ ] `?print-pdf` renders all slides.
+- [ ] `?print-pdf` renders all slides without clipping.
 - [ ] File is self-contained except pinned Reveal.js CDN links; no broken local paths.
+- [ ] CSS overflow safeguards are present in `<style>` (`.slide-body { overflow: hidden; … }`).
 
 ### Codex Mode — Presentation Director First
 
