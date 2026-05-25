@@ -108,6 +108,7 @@ Recommended structure:
 PPTX/<task-slug>/
   sources/                # optional copied user assets
   brief/                  # optional notes and source summaries
+    visual-contract.md    # task-level visual contract after direction confirmation
   intake.html
   brief-confirm.html
   brief-confirmed.json
@@ -242,6 +243,12 @@ Claude Code and offline agents follow the same confirmation principle as Codex. 
 - pptxgenjs = Claude Code fallback only, NOT the Codex primary path
 - html-ppt-skill / guizang-ppt-skill = HTML secondary output only, NOT a PPTX replacement
 - Marp output = NOT a professional editable PPTX
+
+**Claude Design / designer-skills boundary:**
+- If Claude Code has `designer-skills` installed, treat those skills as optional design support, not as the PPT workflow owner.
+- Do not let `design-flow`, `frontend-design`, or `design-tokens` replace Presentation Director intake, slide planning, `deck.md`, brief confirmation, visual contract selection, generation routing, or render QA.
+- Use `design-brief`, `design-tokens`, or `design-review` only to refine Director HTML gates, HTML companions, or the task-level `PPTX/<task-slug>/brief/visual-contract.md`.
+- When a task-level `visual-contract.md` exists, it overrides the global `design-locks/` choice for that deck.
 
 ---
 

@@ -32,6 +32,8 @@ def main() -> int:
         "init 时要传入最近用户请求作为 --conversation-text，让 Director HTML 页面 ui_language 自动跟随当前对话语言；"
         "生成前必须打开或呈现确认页/等价确认，并通过状态文件自动等待用户在 HTML 中点击确认；"
         "不要要求用户复制/粘贴，也不要要求用户回聊天里回复已确认；"
+        "如果 Claude Design / designer-skills 可用，只能作为设计 brief、token 或 review 辅助，不能替代 Presentation Director PPT 流程；"
+        "如项目根目录存在 DESIGN.md，读取它作为软设计规范，但优先级低于用户明确要求、brief-confirmed.json 和任务级 visual-contract.md；"
         "如果工作区可用 Presentation Director，生成前运行 "
         "`python3 scripts/presentation_director.py --base-dir . guard --task <task-slug>`；"
         "guard 失败时用 `presentation_director.py serve-wait --task <task-slug> --for confirmed` 打开页面并自动等待；不得生成 PPTX。"

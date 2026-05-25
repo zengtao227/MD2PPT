@@ -244,3 +244,4 @@ PPTX/<task-slug>/final/<deck-title>.html
 - Claude 可用 `scripts/hooks/claude-presentation-director-prompt.py` 做 UserPromptSubmit 提醒，用 `scripts/hooks/presentation-director-guard.sh` 做生成前 guard adapter。
 - 不把 Marp PPTX 称为可细编辑 PPTX；Marp 更适合快速写作、预览、PDF 和放映版输出。
 - 不把 `ui-ux-pro-max` 或 Open Design 称为 PPTX 生成器；它们分别是设计情报和视觉合同来源。
+- 全局设计规范见 `DESIGN.md`；它是软约束，优先级低于用户明确要求、`brief-confirmed.json` 和任务级 `brief/visual-contract.md`。
