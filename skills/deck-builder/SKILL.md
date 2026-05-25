@@ -396,15 +396,20 @@ python3 scripts/presentation_director.py init \
 
 Use `--ui-language auto` by default. The Director HTML gates (`intake`, `visual-inspiration`, `confirm`, `style-review`, and `compare`) should follow the user's current conversation language, while `content_language` controls the language of the generated slide content.
 
-3. Start the local UI server and wait in the same command:
+3. Start the local UI server and wait in the same command. In Claude Code, use `run_in_background=True` on the Bash tool so you are notified automatically when `serve-wait` exits (i.e. when `confirmed.ready` is written):
 
 ```bash
 python3 scripts/presentation_director.py serve-wait \
   --task "<short task slug>" \
   --for confirmed
+# Run this with run_in_background=True in Claude Code so the agent is notified on completion.
 ```
 
-4. Do not ask the user to copy a URL, paste JSON, or come back to chat to say "confirmed". The intake page should open in the default browser. The user will submit intake choices, review the confirmation page, and click confirm. `serve-wait` blocks until `confirmed.ready`, then exits so the agent can continue automatically. If the page does not open, use:
+**Bug-prevention notes (Bug 1 & Bug 3):**
+- `serve-wait` opens the intake page in the browser automatically. Do NOT run an extra `open` command or `open-page` after starting `serve-wait` — this causes a duplicate tab.
+- Do NOT start `serve-wait` with a shell `&` suffix. Use the Bash tool's `run_in_background` parameter instead; that way Claude Code receives a completion notification and can continue automatically without polling.
+
+4. Do not ask the user to copy a URL, paste JSON, or come back to chat to say "confirmed". The intake page opens automatically. The user submits intake choices, reviews visual inspiration, reviews the confirmation page, and clicks confirm. `serve-wait` then exits and Claude Code is notified. If the page does not open, use:
 
 ```bash
 python3 scripts/presentation_director.py open-page --task "<short task slug>" --page intake

@@ -590,7 +590,7 @@ CHOICE_LABEL_L10N: dict[str, dict[str, dict[str, str]]] = {
             "custom": "Custom",
         },
         "visual_freedom": {
-            "delegate": "Let Presentations choose freely",
+            "delegate": "AI-driven — let the generation engine choose freely",
             "restrained": "More formal and restrained",
             "technical": "More technical / engineering-oriented",
             "investor": "More investor-pitch / high-contrast",
@@ -680,7 +680,7 @@ CHOICE_LABEL_L10N: dict[str, dict[str, dict[str, str]]] = {
             "custom": "Benutzerdefiniert",
         },
         "visual_freedom": {
-            "delegate": "Presentations frei gestalten lassen",
+            "delegate": "KI-gesteuert — Generierungs-Engine frei wählen lassen",
             "restrained": "Formeller und zurückhaltender",
             "technical": "Technischer / stärker engineering-orientiert",
             "investor": "Mehr Investor-Pitch / hoher Kontrast",
@@ -1082,7 +1082,7 @@ INTAKE_QUESTIONS: tuple[Question, ...] = (
         prompt="第一版视觉方向怎么处理?",
         default="delegate",
         choices=(
-            Choice("delegate", "交给 Presentations 自由发挥", "最大化插件表现力。"),
+            Choice("delegate", "AI 自主决策", "由生成引擎根据主题、听众和视觉候选自主选择最优方案。Codex 环境下由 Presentations 插件主导；Claude Code 环境下由 AI 根据 brief 自主决策。"),
             Choice("restrained", "更正式克制", "适合严肃汇报。"),
             Choice("technical", "更科技 / 工程感", "适合技术方案和架构解释。"),
             Choice("investor", "更投资人路演 / 高对比", "适合 pitch 或评审。"),
