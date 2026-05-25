@@ -364,30 +364,101 @@ When source content exceeds these limits, **split the slide**, do not compress. 
 Add these rules to the `<style>` block of every HTML deck. They prevent content from escaping the slide boundary invisibly.
 
 ```css
-/* Overflow safeguard — prevents content running off the bottom of slides */
-.reveal .slides section {
-  box-sizing: border-box;
-  height: 100%;
-}
+/* Overflow safeguard */
+.reveal .slides section { box-sizing: border-box; height: 100%; overflow: hidden; }
 .slide-body {
   overflow: hidden;
-  max-height: calc(100% - 2.8em); /* subtract slide-header height */
+  height: calc(100% - 62px);   /* 62px = slide-header rendered height */
   box-sizing: border-box;
+  padding: 0.45em 1.1em 0.3em;
+  display: flex;
+  flex-direction: column;       /* enables .src margin-top:auto */
 }
-/* Fallback for sections without a .slide-header */
-.reveal .slides section > *:not(aside) {
-  max-width: 100%;
-}
+/* Source line always pinned to bottom */
+.src { font-size:.42em; margin-top:auto; flex-shrink:0; }
 ```
 
 If the deck does not use a `.slide-body` wrapper, apply instead:
 
 ```css
-.reveal .slides section {
-  overflow: hidden;
-  box-sizing: border-box;
+.reveal .slides section { overflow: hidden; box-sizing: border-box; }
+```
+
+**Also enforce these structural rules:**
+- Each slide has exactly **one** `h2.slide-title` at the top (≈ 0.95em). Inside two-col columns, replace with `.col-title` (0.62em) — the size difference saves ~35px per column heading and is the most common cause of content overflow.
+- `.src` always sits as the last child of `.slide-body` and gets `margin-top:auto` — this pins all source lines to the same visual baseline across all slides.
+
+---
+
+### Design Language System — Gradient Text, 3D Depth, and Glow
+
+These are reusable design rules for the Biotech Pipeline dark theme and similar dark-background decks. Apply consistently across all slides of a deck.
+
+#### Gradient Text Classes
+
+| Class | Color | Use |
+|-------|-------|-----|
+| `.grad-cyan` | Cyan (#4cc9f0 → #74d8f5) | Key terms, accent data, drug names |
+| `.grad-gold` | Gold (#ffb703 → #ffd460) | Warnings, secondary metrics, contrast points |
+| `.grad-two` | Cyan → violet → gold | Cover title line 1 only |
+| `.grad-light` | Near-white (#ddeeff → #f2f9ff) | Cover title line 2 only |
+
+**Gradient base classes carry zero glow.** Glow is a separate utility — see below.
+
+#### Cover Title 3D System
+
+All three cover title lines share the **same `filter: drop-shadow` depth parameters** so they appear as one cohesive block with consistent depth:
+
+```css
+/* Shared depth — apply to .grad-two and .grad-light */
+filter: drop-shadow(0 2px 2px rgba(0,0,0,.45)) drop-shadow(0 4px 10px rgba(0,0,0,.28));
+
+/* Cover line 3 (.grad-cyan .glow-hero) also includes the same depth in its keyframes */
+@keyframes glowHero {
+  0%,100%{ filter: drop-shadow(0 2px 2px rgba(0,0,0,.45))
+                   drop-shadow(0 4px 10px rgba(0,0,0,.28))
+                   drop-shadow(0 0 6px rgba(76,201,240,.5)); }
+  50%    { filter: drop-shadow(0 2px 2px rgba(0,0,0,.45))
+                   drop-shadow(0 4px 10px rgba(0,0,0,.28))
+                   drop-shadow(0 0 20px rgba(76,201,240,.9)); }
 }
 ```
+
+3D depth is **cover title only**. Never apply these depth filters to content slide headings or body text — they are a "grand entrance" effect reserved for the title.
+
+#### Glow Utility Classes — Emphasis Only
+
+Glow is an **attention tool, not decoration**. The rule: only elements that are deliberately enlarged or explicitly highlighted may receive glow.
+
+**Apply glow to:**
+- Stat card numbers (`.stat-card .num`) — these are already 1.4em+
+- Pillar / callout large numbers (`.pnum`, large inline metrics)
+- The cover subtitle (`.glow-hero`)
+- At most 1–2 emphasized numbers per content slide
+
+**Never apply glow to:**
+- Inline drug names or keywords in body text
+- Bullet list items or table cells
+- Slide headings (`h2.slide-title`, `.col-title`, `glass h4`)
+- Any element where the text has not been explicitly enlarged for emphasis
+
+| Class | Color | Keyframe range | Use |
+|-------|-------|---------------|-----|
+| `.glow-hero` | Cyan | 6 → 20px (+ depth) | Cover subtitle, 1 per deck |
+| `.glow-c` | Cyan | 4 → 12px | Primary stat numbers, key metrics |
+| `.glow-g` | Gold | 3 → 8px (softer — gold is visually loud) | Secondary gold callouts |
+| `.glow-w` | White | 3 → 10px | White/near-white emphasized numbers |
+
+```css
+.glow-hero { animation: glowHero 2.8s ease infinite; display:inline-block; }
+.glow-c    { animation: glow     2.8s ease infinite; display:inline-block; }
+.glow-g    { animation: goldGlow 3.0s ease infinite; display:inline-block; }
+.glow-w    { animation: whiteGlow 3.0s ease infinite; display:inline-block; }
+```
+
+These classes work on any color text, not just cyan/gold — the class name refers to the glow color, which should match the text color for visual coherence.
+
+---
 
 ### Animation Density Rules
 
