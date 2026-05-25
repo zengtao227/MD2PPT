@@ -407,47 +407,40 @@ These are reusable design rules for the Biotech Pipeline dark theme and similar 
 
 #### Cover Title 3D System
 
-All three cover title lines share the **same three-layer depth structure** so they appear as one cohesive 3D block. On dark backgrounds, black shadows are invisible — the visible depth comes from the contrast between a **top light reflection** and a **hard extrusion shadow** below.
+The cover title uses **`text-shadow` for 3D depth**, not `filter: drop-shadow`. `text-shadow` casts from letter glyph shapes and works on gradient text (where `-webkit-text-fill-color: transparent` would make `filter: drop-shadow` invisible on dark backgrounds).
+
+**Template rule: title lines must be uniform in technique.** Every line — whether the title is 1, 2, or 3 lines — must have: gradient color + 3D depth + glow animation. Never mix "some lines have glow, some don't" or "some lines are gradient, some are plain."
 
 ```css
-/*
-  Layer 1 — top light reflection  (implies a lit surface facing upward)
-  Layer 2 — hard bottom edge      (pure black; the "extruded" face)
-  Layer 3 — soft depth volume     (distance from the slide surface)
-*/
-
-/* Line 1: tri-color gradient */
-.grad-two {
-  filter:
-    drop-shadow(0 -1px 0 rgba(255,255,255,.22))
-    drop-shadow(0 2px 0 rgba(0,0,0,.92))
-    drop-shadow(0 5px 10px rgba(0,0,0,.6));
+/* Shared 3D — applied to .cov-h1 container; inherited by ALL child lines */
+.text-3d {
+  text-shadow:
+    0  1px  0 rgba(76,201,240,.30),   /* cyan top shimmer  */
+    0  4px  0 rgba(0,0,0,.88),         /* hard extrusion edge (no blur = crisp) */
+    0  7px 14px rgba(76,201,240,.22),  /* cyan mid-depth glow */
+    0 12px 28px rgba(0,0,0,.50);       /* far volume shadow */
 }
 
-/* Line 2: near-white gradient */
-.grad-light {
-  filter:
-    drop-shadow(0 -1px 0 rgba(255,255,255,.35))   /* stronger — white text needs more edge */
-    drop-shadow(0 2px 0 rgba(0,0,0,.92))
-    drop-shadow(0 5px 10px rgba(0,0,0,.6));
-}
-
-/* Line 3: cyan + glow-hero — same 3D layers inside keyframes */
-@keyframes glowHero {
-  0%,100% { filter:
-    drop-shadow(0 -1px 0 rgba(76,201,240,.3))     /* cyan top edge */
-    drop-shadow(0 2px 0 rgba(0,0,0,.92))
-    drop-shadow(0 5px 10px rgba(0,0,0,.6))
-    drop-shadow(0 0 7px rgba(76,201,240,.5)); }
-  50%     { filter:
-    drop-shadow(0 -1px 0 rgba(76,201,240,.4))
-    drop-shadow(0 2px 0 rgba(0,0,0,.92))
-    drop-shadow(0 5px 10px rgba(0,0,0,.6))
-    drop-shadow(0 0 20px rgba(76,201,240,.9)); }
-}
+/* Gradient classes — pure color only; depth comes from inherited text-shadow */
+.grad-two   { background: linear-gradient(135deg, #4cc9f0 0%, #a78bfa 50%, #ffb703 100%); ... }
+.grad-light { background: linear-gradient(90deg,  #ddeeff 0%, #f2f9ff 100%); ... }
 ```
 
-3D depth is **cover title only**. Never apply these depth filters to content slide headings or body text — they are a "grand entrance" effect reserved for the title.
+**Cover title HTML template** (1–3 lines, all uniform):
+
+```html
+<div class="cov-h1 text-3d">
+  <span class="grad-two  glow-c">Line 1 / full title if single line</span><br>
+  <span class="grad-light glow-w">Line 2 (if needed)</span><br>
+  <span class="grad-cyan  glow-hero">Line 3 — final/tagline line</span>
+</div>
+```
+
+- 1-line title: use a single span with `.grad-two.glow-c` (or `.glow-hero` for maximum impact)
+- 2-line title: lines 1 + 3 (skip `.grad-light` line)
+- 3-line title: all three, as above
+
+Glow intensity creates a natural progression (moderate → moderate → strong), but all lines use the SAME technique. 3D depth is **cover title only** — never apply `.text-3d` to content slide headings.
 
 #### Glow Utility Classes — Emphasis Only
 
