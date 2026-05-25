@@ -1551,6 +1551,8 @@ def html_profile_for_candidate(context: str, candidate: VisualCandidate) -> tupl
         return "zoom", "rich", "linear-gradient(135deg, #1a1a2e, #16213e, #0f3460)"
     if any(token in text for token in ("product", "launch", "brand", "studio-visual", "creative", "产品", "创意")):
         return "convex", "rich", "linear-gradient(135deg, #667eea, #764ba2)"
+    if "aurora" in text:
+        return "zoom", "rich", "linear-gradient(135deg, #e0f2fe, #dbeafe, #f0fdf4)"
     if context == "research" or any(token in text for token in ("academic", "clinical", "medical", "atlas", "research", "学术", "知识")):
         return "fade", "minimal", "linear-gradient(135deg, #f5f7fa, #c3cfe2)"
     if any(token in text for token in ("boardroom", "consulting", "roadmap", "restrained", "正式", "克制")):
@@ -1712,6 +1714,21 @@ def build_visual_candidates(topic: str, selections: JsonDict) -> tuple[VisualCan
                 "少量抽象背景；内容页保持干净。",
                 "editorial design-lock + beautiful template contract + typography rules",
                 "可能不够有冲击力，商业听众需要增加关键数字页。",
+            ),
+            VisualCandidate(
+                "aurora-light",
+                "Aurora Light",
+                "浅色底+渐变光晕+动感数据展示。兼顾可读性与科技感动画，深色字配发光强调色。",
+                "学术讲演、公众演讲、科技科普、混合光源投影场景。",
+                "需要强戏剧感的深色大屏路演或暗场展示。",
+                ("#f0f9ff", "#0d2137", "#0d7ea2", "#d97706"),
+                "浅蓝白底，封面使用淡蓝/薄荷渐变；内容页用渐变色标题和发光数字强调。",
+                "深色主文字 + 渐变色大标题（CSS gradient-text）+ 发光数字。",
+                "发光数据卡、渐变进度条、动态机制图、3D标题效果。",
+                "渐变色填充进度条、光晕数字卡、轻玻璃感卡片。",
+                "浅底+淡色渐变，封面使用蓝/薄荷渐变光晕；内容页保持高对比深色文字。",
+                "aurora design + glassmorphism light + gradient-text + animated accents",
+                "投影机亮度不足时渐变光晕可能变浅，建议调高亮度；避免纯白内容页缺乏层次。",
             ),
         ),
         "engineering": (
