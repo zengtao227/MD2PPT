@@ -128,6 +128,8 @@ Codex Presentations 插件内部可能仍按插件规则使用 `outputs/<thread-
 output_format: "html-revealjs" | "pptx" | "both"
 ```
 
+已确认 brief 中的 `output_format` 是生成路由的真实来源。确认之后如果用户在聊天中改口要求 HTML ↔ PPTX ↔ both，不得直接沿用旧 brief 生成另一种格式；必须重新打开确认页更新 brief，或得到用户明确的“跳过确认/直接改成 <format>”指令，并在最终报告里记录该覆盖来源。
+
 ### Layout QA / No Overlap Gate
 
 任何 PPTX 生成或 targeted edit 都必须通过渲染级排版检查，而不是只通过代码、XML 或包结构检查：

@@ -144,6 +144,8 @@ Final PPTX files are the editable source of record. For small changes, use manua
 
 ## Pipeline Overview
 
+The confirmed `output_format` is authoritative. If the user later asks in chat to switch between HTML, PPTX, or both, do not generate from the stale confirmed brief. Reopen the confirmation gate to update the brief, or require an explicit "skip confirmation / directly change to <format>" instruction and record that override in the final report.
+
 ### Codex Net-New Presentation Path
 
 Use this path when the user asks for a new presentation in Codex. `output_format` decides whether the final generation route is Reveal.js HTML, PPTX, or both.
