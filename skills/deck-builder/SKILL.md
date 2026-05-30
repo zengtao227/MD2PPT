@@ -480,6 +480,33 @@ These classes work on any color text, not just cyan/gold — the class name refe
 
 ---
 
+### Light Background — Image / Art Blending Rule
+
+When placing any image, SVG illustration, or decorative artwork on a **light background** slide, the artwork must never have hard edges that abruptly border the background. Apply a `mask-image` radial gradient to the artwork's container so its edges fade smoothly into the slide background.
+
+```css
+/* Standard light-bg vignette — apply to the container wrapping the image/art */
+.cov-r, .art-panel {
+  -webkit-mask-image: radial-gradient(ellipse 78% 80% at center, black 38%, transparent 92%);
+          mask-image: radial-gradient(ellipse 78% 80% at center, black 38%, transparent 92%);
+}
+```
+
+**When to apply:**
+- Cover right-panel artwork on light themes (Aurora Light and similar)
+- Full-bleed decorative dividers between text and illustration columns
+- Any photo or graphic where the background color is lighter than `#d0d0d0`
+
+**Do NOT apply on dark backgrounds** — vignette is unnecessary when the artwork naturally blends into a near-black slide background.
+
+**Bar-label wrapping rule:** The `.bar-label` column must always use `white-space: nowrap` and a width of at least `10em` to prevent longer labels (e.g., "Phase III (36 drugs)") from wrapping to a second line when shorter sibling labels ("Phase I …") stay on one line. Consistent label row height is a visual consistency requirement.
+
+```css
+.bar-row .bar-label { width:10em; text-align:right; color:var(--muted); flex-shrink:0; white-space:nowrap; }
+```
+
+---
+
 ### Animation Density Rules
 
 | `html_animation` | Implementation |
