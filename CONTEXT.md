@@ -138,15 +138,16 @@ output_format: "html-revealjs" | "pptx" | "both"
 
 已确认 brief 中的 `output_format` 是生成路由的真实来源。确认之后如果用户在聊天中改口要求 HTML ↔ PPTX ↔ both，不得直接沿用旧 brief 生成另一种格式；必须重新打开确认页更新 brief，或得到用户明确的“跳过确认/直接改成 <format>”指令，并在最终报告里记录该覆盖来源。
 
-### Layout QA / No Overlap Gate
+### Layout QA / Safe Area / No Overlap Gate
 
 任何 PPTX 生成或 targeted edit 都必须通过渲染级排版检查，而不是只通过代码、XML 或包结构检查：
 
 - 必须生成逐页预览图和 contact sheet，并把它们放入对应版本目录。
+- 必须定义并检查安全区。默认 1280×720 画布使用 `x=54, y=70, width=1172, height=590` 作为内容安全区；标题、正文、截图、图表、表格、代码块、说明文字等关键内容必须在安全区内。背景、网格和装饰性 bleed 可以延伸到页面边缘，但不得裁切或遮挡关键内容。
 - 必须检查标题、副标题、正文、页脚、页码、图表标签、连接线和卡片之间是否互相重叠或裁切。
 - 长标题必须预留换行高度；标题换行后不得压住副标题、小字说明或页面主体。
 - 发现重叠后必须修复并重新渲染受影响页面；QA summary 中要写明修复前问题、修复动作和复检结果。
-- 没有渲染证据和 no-overlap 检查结果时，不得把 PPTX 标记为完成。
+- 没有渲染证据、安全区检查和 no-overlap 检查结果时，不得把 PPTX 标记为完成。
 
 ### HTML Deck（Reveal.js 主输出）
 

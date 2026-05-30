@@ -57,6 +57,7 @@ Checked after generation — mandatory before declaring done.
 |-------|---------------|----------------|
 | Per-slide preview images exist | At least one render pass completed | Re-render before declaring done |
 | Contact sheet generated | Thumbnail grid of all slides exists | Generate contact sheet |
+| Safe area respected | Essential content is inside the declared safe area; only backgrounds and slide chrome use bleed/chrome bands | Move, resize, simplify, or split the slide; run `scripts/check_presentation_safe_area.py` when layout JSON exists |
 | No text overlaps | Titles, subtitles, body text, labels, footers, page numbers, and connector lines do not collide | Move elements, widen text boxes, reduce font size, or reduce copy, then re-render |
 | Long-title safe zone respected | Wrapped titles still leave visible clearance before subtitles or body content | Reserve a taller title band or move the subtitle/content down |
 | Text overflow absent | No title wraps to a third line; no body text clips container | Fix text box size or reduce copy |
@@ -71,11 +72,23 @@ Checked after generation — mandatory before declaring done.
 |-------|---------------|----------------|
 | Browser test completed | HTML opened in browser and verified | Open and inspect before declaring done |
 | 16:9 aspect ratio correct | Slides render at correct ratio in full-screen mode | Fix CSS or slide dimensions |
+| Safe area respected | All normal content sits inside `.slide-safe`; `.bleed` is used only for backgrounds or intentional full-bleed media | Move content into `.slide-safe`, constrain media/code blocks, or split the slide |
 | Text overflow absent | No text clips or wraps unexpectedly | Fix font size or container width |
 | Visual rhythm consistent | No abrupt style break between slides | Check section openers and content slides |
 | Draft / preview HTML vs final HTML not confused | Final output is in `PPTX/<task-slug>/final/`, not a temporary draft or preview location | Verify file path |
 
 **Minimum evidence:** Contact sheet path (PPTX) or browser screenshot (HTML) included in completion report.
+
+### Default Safe Area
+
+For 16:9 decks authored on a `1280x720` canvas, use this default unless the template or design lock defines a stricter one:
+
+```text
+content safe area: x=54, y=70, width=1172, height=590
+slide frame:       x=0,  y=0,  width=1280, height=720
+```
+
+Essential content means titles, subtitles, body text, screenshots, diagrams, charts, tables, icons that carry meaning, callouts, controls, and code blocks. Decorative backgrounds may bleed to the slide frame, but essential content may not rely on clipping or overflow hiding.
 
 ---
 

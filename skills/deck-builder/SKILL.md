@@ -143,6 +143,67 @@ Final PPTX files are the editable source of record. For small changes, use manua
 
 ---
 
+## Slide Safe-Area Contract
+
+Every deck must define a safe area before generation and verify it after rendering. This applies to PPTX, Reveal.js HTML decks, and PPTX-derived HTML companions.
+
+Default 16:9 authoring coordinates use a `1280x720` slide. Unless a template or design lock defines stricter margins, use:
+
+```text
+content safe area: x=54, y=70, width=1172, height=590
+slide frame:       x=0,  y=0,  width=1280, height=720
+```
+
+Hard rules:
+
+- Essential content must stay inside the content safe area: titles, subtitles, body text, screenshots, diagrams, charts, tables, icons that carry meaning, callouts, controls, and code blocks.
+- Backgrounds, grids, full-bleed decorative fills, and intentional hero imagery may extend to the slide frame, but they must not crop or hide essential content.
+- Slide chrome such as page numbers, footers, source labels, and tiny kicker rows may use a reserved chrome band, but they must still stay inside the slide frame and must not collide with the content safe area.
+- Any screenshot, product image, code image, or rendered preview placed on a slide must use a real bounding box inside the safe area. Do not let it rely on `overflow:hidden` to hide the part that ran outside the page.
+- If a proof object cannot fit inside the safe area at readable size, split the slide or simplify the proof object. Do not shrink text below the deck's minimum readable size to force it in.
+
+PPTX QA must run both the generator's layout checker and a safe-area check when layout JSON exists:
+
+```bash
+python3 <deck-builder-skill-dir>/scripts/check_presentation_safe_area.py \
+  --layout "PPTX/<task-slug>/v1/layout-or-presentations-layout-dir"
+```
+
+Inside the Presentation Director repo, `scripts/check_presentation_safe_area.py` is the same checker. If an engine cannot emit layout JSON, the agent must verify safe-area compliance from full-size rendered previews and record that manual check in `qa-summary.md`.
+
+HTML decks must implement the same contract in CSS:
+
+```css
+.reveal .slides section {
+  position: relative;
+  width: 1280px;
+  height: 720px;
+  overflow: hidden;
+}
+.slide-safe {
+  position: absolute;
+  left: 54px;
+  top: 70px;
+  width: 1172px;
+  height: 590px;
+}
+.slide-safe img,
+.slide-safe video,
+.slide-safe canvas,
+.slide-safe pre {
+  max-width: 100%;
+  max-height: 100%;
+}
+.bleed {
+  position: absolute;
+  inset: 0;
+}
+```
+
+All regular slide content goes inside `.slide-safe`; only backgrounds and explicitly intentional bleed elements may sit outside it.
+
+---
+
 ## Pipeline Overview
 
 The confirmed `output_format` is authoritative. If the user later asks in chat to switch between HTML, PPTX, or both, do not generate from the stale confirmed brief. Reopen the confirmation gate to update the brief, or require an explicit "skip confirmation / directly change to <format>" instruction and record that override in the final report.
@@ -393,6 +454,7 @@ If the deck does not use a `.slide-body` wrapper, apply instead:
 **Also enforce these structural rules:**
 - Each slide has exactly **one** `h2.slide-title` at the top (≈ 0.95em). Inside two-col columns, replace with `.col-title` (0.62em) — the size difference saves ~35px per column heading and is the most common cause of content overflow.
 - `.src` always sits as the last child of `.slide-body` and gets `margin-top:auto` — this pins all source lines to the same visual baseline across all slides.
+- Place every normal content element inside `.slide-safe`; images, screenshots, code blocks, tables, and diagrams must be contained by the safe area and may not extend outside the slide, even if the section itself hides overflow.
 
 ---
 
@@ -530,6 +592,7 @@ Use `<aside class="notes">` inside each `<section>`. Press `S` to open presenter
 - [ ] Open in Chrome/Safari; deck loads without console errors.
 - [ ] All slides advance correctly with arrow keys and spacebar.
 - [ ] **No text overflows slide boundaries** — scroll through every slide and confirm no content is cut off at the bottom or sides. If any slide overflows: split the slide or remove content, do not reduce font size below 0.55em.
+- [ ] **Safe area respected** — every non-background text block, screenshot, chart, table, code block, and diagram is fully inside `.slide-safe`; anything using `.bleed` is background-only.
 - [ ] Gradients render as expected (if `html_animation` is `moderate` or `rich`).
 - [ ] Speaker notes are visible in presenter view (`S` key).
 - [ ] `?print-pdf` renders all slides without clipping.
@@ -847,6 +910,7 @@ Full gate definitions inside Presentation Director: `docs/quality-gates.md`. If 
 - [ ] Per-slide preview images rendered (or browser screenshot for HTML)
 - [ ] Contact sheet generated (PPTX) or browser full-screen test completed (HTML)
 - [ ] Layout JSON reviewed (overflow, font issues, spacing)
+- [ ] Safe-area check completed: essential content stays inside the declared safe area; backgrounds/chrome only may sit outside it
 - [ ] No text overlaps after rendering: title/subtitle/body/footer/page number/labels/connectors are visually separated
 - [ ] Long titles are safe after wrapping: wrapped titles do not cover subtitles, captions, or the body area
 - [ ] At least one "find issue → fix → re-render" cycle completed
