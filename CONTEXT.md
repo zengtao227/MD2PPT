@@ -167,14 +167,16 @@ output_format: "html-revealjs" | "pptx" | "both"
 
 ### Fallback PPTX Path
 
-本地 `skills/pptx` + pptxgenjs 路径。用于 Claude Code 或没有 Codex `Presentations` 能力时的备用方案。
+本地 `skills/pptx` + pptxgenjs 路径。只用于 Claude Code、本地离线代理，或用户在 Codex 中明确要求绕过 `Presentations` 插件的特殊情况。
+
+在 Codex 环境中，只要 `output_format` 是 `"pptx"` 或 `"both"`，就必须使用 Codex `Presentations` 插件 / `artifact-tool presentation-jsx` 生成 PPTX。如果当前 session 没有暴露该插件，agent 必须停止并说明“缺少 Codex Presentations 插件”，不得自动改用 `python-pptx`、pptxgenjs、Google Slides、Keynote、Microsoft PowerPoint 自动化或 QuickLook 等 fallback 路径。
 
 Claude Code / 本地代理也要遵守同一套前置确认原则：内容语言和页数/时长分开收集；如果本地可用 Presentation Director helper，应先跑 intake / confirmation 并通过 `guard` 后再用 pptxgenjs 或 HTML 工具生成；如果 helper 不可用，必须在聊天或静态 HTML 中做等价确认，不能直接生成全新 deck。
 
 ### 工作流优先级
 
 1. Codex `Presentations`：全新、可编辑、可验证 PPTX 的首选。
-2. Claude Code / 本地代理：Presentation Director 或等价确认 → `skills/pptx` + pptxgenjs，适合没有 Codex `Presentations` 的可编辑备选路径。
+2. Claude Code / 本地代理：Presentation Director 或等价确认 → `skills/pptx` + pptxgenjs，作为非 Codex 环境的可编辑备选路径。
 3. VS Code + Marp：快速草稿、预览、PDF 和放映版，不作为默认的专业 PPTX 路径。
 
 ## 当前推荐路径
@@ -192,8 +194,8 @@ Brief Confirmation Gate（open page and wait for user）
     ↓
 Generation — route by output_format
     ├─ html-revealjs → Claude/Codex writes Reveal.js HTML directly
-    ├─ pptx → Codex Presentations / pptxgenjs
-    └─ both → HTML first, then PPTX
+    ├─ pptx → Codex Presentations（Codex 中强制；缺插件则停止）
+    └─ both → PPTX first via Codex Presentations, then HTML（缺插件则停止）
     ↓
 Render QA
     ├─ HTML: browser screenshot + text-overflow check

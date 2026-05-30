@@ -2845,6 +2845,11 @@ Rules:
 
     html_output: Path = task_dir / "final" / f"{task_dir.name}.html"
     pptx_output: Path = task_dir / "v1" / "final.pptx"
+    presentations_required: str = """Codex PPTX hard requirement:
+- Before writing or rendering any PPTX, explicitly verify that the Codex Presentations plugin / artifact-tool `presentation-jsx` is available in this session.
+- If Presentations is not available, STOP and report that the required Codex Presentations plugin is missing. Do not create a fallback PPTX.
+- Do not use `python-pptx`, pptxgenjs, Google Slides, Keynote, Microsoft PowerPoint automation, QuickLook, or manual local scripts as substitutes for PPTX generation.
+- The only exception is an explicit user request to bypass Presentations after you report the missing plugin."""
 
     if output_format == "html-revealjs":
         return f"""Write a Reveal.js 5.1.0 HTML presentation directly. Do NOT call the Codex Presentations plugin.
@@ -2867,6 +2872,8 @@ QA:
         return f"""Generate both outputs: first editable PPTX via Codex Presentations, then Reveal.js 5.1.0 HTML directly.
 
 {common_rules}
+
+{presentations_required}
 
 PPTX route:
 - Use the Codex Presentations skill and artifact-tool presentation JSX.
@@ -2892,6 +2899,8 @@ QA:
     return f"""Use the Codex Presentations skill and artifact-tool presentation JSX.
 
 {common_rules}
+
+{presentations_required}
 
 Output:
 - Use the Presentations internal scratch workspace as required by the plugin.
@@ -2944,6 +2953,12 @@ Change only the selected visual directions:
 - structure rhythm
 - visual expression
 - image/logo treatment
+
+Codex PPTX hard requirement:
+- Before writing or rendering any PPTX, explicitly verify that the Codex Presentations plugin / artifact-tool `presentation-jsx` is available in this session.
+- If Presentations is not available, STOP and report that the required Codex Presentations plugin is missing. Do not create a fallback PPTX.
+- Do not use `python-pptx`, pptxgenjs, Google Slides, Keynote, Microsoft PowerPoint automation, QuickLook, or manual local scripts as substitutes for PPTX generation.
+- The only exception is an explicit user request to bypass Presentations after you report the missing plugin.
 
 Render and QA:
 - use the Presentations internal scratch workspace as required by the plugin
