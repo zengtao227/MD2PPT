@@ -67,8 +67,8 @@ Use this after Template A0 has produced a confirmed brief, or when the task is a
 ```
 I want to generate a high-quality, editable PowerPoint deck.
 
-Use the Codex Presentations skill / plugin as the primary workflow.
-Generation engine: artifact-tool presentation JSX.
+Use the Codex Presentations skill / plugin as the primary workflow. If the plugin is not visible in Codex UI, resolve the bundled runtime at `$HOME/.codex/plugins/cache/openai-primary-runtime/presentations/*/skills/presentations`.
+Generation engine: artifact-tool presentation JSX. Before PPTX work, run `scripts/check_presentation_runtime.mjs`; for net-new PPTX export, call `scripts/build_artifact_deck.mjs`.
 Do NOT use pptxgenjs, Marp, or Google Slides as the primary generation path.
 
 [Input Files]
@@ -82,7 +82,7 @@ Do NOT use pptxgenjs, Marp, or Google Slides as the primary generation path.
 - Per-slide preview PNGs: copy to `PPTX/<task-slug>/v1/slides/` for the final share HTML companion
 - Contact sheet and concise QA summary: copy to `PPTX/<task-slug>/v1/`
 - Final share HTML companion: `PPTX/<task-slug>/final/<deck-title>.html`, generated from the selected version's per-slide previews
-- Scratch / preview / layout files required by the Presentations plugin may stay inside its internal workspace
+- Scratch / preview / layout files required by the Presentations plugin/runtime may stay inside its internal workspace
 - User-facing deliverables and review artifacts must be collected in `PPTX/<task-slug>/`
 
 [Narrative Requirements]

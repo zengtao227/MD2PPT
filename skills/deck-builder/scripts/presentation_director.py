@@ -2845,11 +2845,17 @@ Rules:
 
     html_output: Path = task_dir / "final" / f"{task_dir.name}.html"
     pptx_output: Path = task_dir / "v1" / "final.pptx"
-    presentations_required: str = """Codex PPTX hard requirement:
-- Before writing or rendering any PPTX, explicitly verify that the Codex Presentations plugin / artifact-tool `presentation-jsx` is available in this session.
-- If Presentations is not available, STOP and report that the required Codex Presentations plugin is missing. Do not create a fallback PPTX.
-- Do not use `python-pptx`, pptxgenjs, Google Slides, Keynote, Microsoft PowerPoint automation, QuickLook, or manual local scripts as substitutes for PPTX generation.
-- The only exception is an explicit user request to bypass Presentations after you report the missing plugin."""
+    presentations_required: str = f"""Codex PPTX hard requirement:
+- Before writing or rendering any PPTX, verify Codex Presentations / artifact-tool `presentation-jsx`. Do not treat plugin UI or tool-search absence as missing by itself.
+- Resolve Presentations in this order:
+  1. Active Codex Presentations skill / plugin if exposed in the current session.
+  2. Bundled runtime at `$HOME/.codex/plugins/cache/openai-primary-runtime/presentations/*/skills/presentations`; set `SKILL_DIR` to that resolved directory.
+- Before PPTX work, run `node "$SKILL_DIR/scripts/check_presentation_runtime.mjs" --workspace "$WORKSPACE"` and include the runtime report in QA notes.
+- For net-new PPTX export, the final build must call:
+  `node "$SKILL_DIR/scripts/build_artifact_deck.mjs" --workspace "$WORKSPACE" --slides-dir "$SLIDES_DIR" --out "{pptx_output}" --preview-dir "{task_dir / "v1" / "slides"}" --layout-dir "$WORKSPACE/layout" --contact-sheet "{task_dir / "v1" / "contact-sheet.png"}"`
+- If neither active plugin nor bundled runtime is available, or the runtime check fails, STOP and report that the required Codex Presentations runtime is missing. Do not create a fallback PPTX.
+- Do not use `python-pptx`, pptxgenjs, Google Slides, Keynote, Microsoft PowerPoint automation, QuickLook, Marp, or unrelated local scripts as substitutes for PPTX generation.
+- The only exception is an explicit user request to bypass Presentations after you report the missing runtime."""
 
     if output_format == "html-revealjs":
         return f"""Write a Reveal.js 5.1.0 HTML presentation directly. Do NOT call the Codex Presentations plugin.
@@ -2955,10 +2961,13 @@ Change only the selected visual directions:
 - image/logo treatment
 
 Codex PPTX hard requirement:
-- Before writing or rendering any PPTX, explicitly verify that the Codex Presentations plugin / artifact-tool `presentation-jsx` is available in this session.
-- If Presentations is not available, STOP and report that the required Codex Presentations plugin is missing. Do not create a fallback PPTX.
-- Do not use `python-pptx`, pptxgenjs, Google Slides, Keynote, Microsoft PowerPoint automation, QuickLook, or manual local scripts as substitutes for PPTX generation.
-- The only exception is an explicit user request to bypass Presentations after you report the missing plugin.
+- Before writing or rendering any PPTX, verify Codex Presentations / artifact-tool `presentation-jsx`. Do not treat plugin UI or tool-search absence as missing by itself.
+- Resolve Presentations in this order: active Codex Presentations skill / plugin if exposed, then bundled runtime at `$HOME/.codex/plugins/cache/openai-primary-runtime/presentations/*/skills/presentations`.
+- Set `SKILL_DIR` to the resolved runtime directory and run `node "$SKILL_DIR/scripts/check_presentation_runtime.mjs" --workspace "$WORKSPACE"` before PPTX work; include the runtime report in QA notes.
+- For generated revised decks, use the same Presentations runtime and artifact-tool build/export path; when rebuilding slide modules, call `node "$SKILL_DIR/scripts/build_artifact_deck.mjs"` for the final PPTX export.
+- If neither active plugin nor bundled runtime is available, or the runtime check fails, STOP and report that the required Codex Presentations runtime is missing. Do not create a fallback PPTX.
+- Do not use `python-pptx`, pptxgenjs, Google Slides, Keynote, Microsoft PowerPoint automation, QuickLook, Marp, or unrelated local scripts as substitutes for PPTX generation.
+- The only exception is an explicit user request to bypass Presentations after you report the missing runtime.
 
 Render and QA:
 - use the Presentations internal scratch workspace as required by the plugin

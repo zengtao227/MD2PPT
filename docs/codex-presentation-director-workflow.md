@@ -304,7 +304,7 @@ Buttons:
 - `返回修改`
 - `确认并开始生成`
 
-Only after the user clicks `确认并开始生成` should the agent call the Presentations plugin.
+Only after the user clicks `确认并开始生成` should the agent call the Presentations capability. If the plugin is not visible in the Codex UI, the agent must resolve the bundled runtime before deciding that Presentations is unavailable.
 
 In an interactive Codex session, the agent must not call `POST /api/confirm`, write `brief-confirmed.json`, or touch `confirmed.ready` on behalf of the user unless the user explicitly says to skip confirmation or generate directly.
 
@@ -317,7 +317,7 @@ PPTX/<task-slug>/status/confirmed.ready
 
 ### Step 4 - Generate First PPTX Draft
 
-The agent calls Presentations plugin with:
+The agent calls Presentations with:
 
 - confirmed brief
 - source material paths / links
@@ -327,6 +327,15 @@ The agent calls Presentations plugin with:
 - imagegen policy
 - content language
 - output constraints
+
+Runtime resolution is mandatory for Codex PPTX output:
+
+1. Use the active Codex `Presentations` skill / plugin if it is exposed in the current session.
+2. If it is not exposed, resolve the bundled runtime under `$HOME/.codex/plugins/cache/openai-primary-runtime/presentations/*/skills/presentations`.
+3. Set `SKILL_DIR` to the resolved directory and run `node "$SKILL_DIR/scripts/check_presentation_runtime.mjs" --workspace "$WORKSPACE"`.
+4. For net-new PPTX export, call `node "$SKILL_DIR/scripts/build_artifact_deck.mjs" --workspace "$WORKSPACE" --slides-dir "$SLIDES_DIR" --out "PPTX/<task-slug>/v1/final.pptx" --preview-dir "PPTX/<task-slug>/v1/slides" --layout-dir "$WORKSPACE/layout" --contact-sheet "PPTX/<task-slug>/v1/contact-sheet.png"`.
+
+If neither an active plugin nor the bundled runtime exists, or the runtime check fails, stop and report the missing Codex Presentations runtime. Do not use pptxgenjs, python-pptx, Google Slides, Keynote, PowerPoint automation, QuickLook, or Marp as a substitute unless the user explicitly asks to bypass Codex Presentations.
 
 Important instruction to Presentations:
 
@@ -1098,6 +1107,9 @@ The agent should pass a clear handoff to Presentations:
 
 ```text
 Use the Codex Presentations skill and artifact-tool presentation JSX.
+If the plugin is not visible in the Codex UI, resolve bundled runtime at:
+$HOME/.codex/plugins/cache/openai-primary-runtime/presentations/*/skills/presentations
+Set SKILL_DIR to that directory.
 
 Confirmed brief:
 <brief-confirmed.json summary>
@@ -1114,7 +1126,9 @@ Rules:
 - Do not use a fixed design-lock unless the confirmed brief explicitly asks for it.
 
 Output:
-- Use the Presentations internal scratch workspace as required by the plugin.
+- Use the Presentations internal scratch workspace as required by the plugin/runtime.
+- Before building, run `node "$SKILL_DIR/scripts/check_presentation_runtime.mjs" --workspace "$WORKSPACE"` and keep the result in QA notes.
+- For net-new PPTX export, the final PPTX must be produced by `node "$SKILL_DIR/scripts/build_artifact_deck.mjs" --workspace "$WORKSPACE" --slides-dir "$SLIDES_DIR" --out "PPTX/<task-slug>/v1/final.pptx" --preview-dir "PPTX/<task-slug>/v1/slides" --layout-dir "$WORKSPACE/layout" --contact-sheet "PPTX/<task-slug>/v1/contact-sheet.png"`.
 - Copy editable PPTX to `PPTX/<task-slug>/v1/final.pptx`.
 - Copy per-slide preview PNGs to `PPTX/<task-slug>/v1/slides/`.
 - Copy contact sheet and concise QA summary to `PPTX/<task-slug>/v1/`.

@@ -10,13 +10,15 @@
 
 | 路径 | 适合工具 | 生成引擎 | 定位 |
 |------|----------|----------|------|
-| **主路径** | Codex `Presentations` 插件 | artifact-tool `presentation-jsx` | 高质量可编辑 PPTX，带叙事、设计系统、渲染 QA |
-| **备用路径** | Claude Code / 离线脚本 | `skills/pptx` + pptxgenjs | 没有 Codex Presentations 时的可编辑 PPTX 方案 |
+| **主路径** | Codex `Presentations` 能力 | artifact-tool `presentation-jsx` + bundled runtime scripts | 高质量可编辑 PPTX，带叙事、设计系统、渲染 QA |
+| **备用路径** | Claude Code / 离线脚本 | `skills/pptx` + pptxgenjs | 没有 Codex Presentations runtime，或用户明确绕过 Codex 主路径时的可编辑 PPTX 方案 |
 
 因此，在 Codex 里写 PPTX 时，Prompt 应该明确要求：
 
 - 使用 **Presentations** 技能 / 插件
 - 使用 **artifact-tool presentation JSX**
+- 如果插件 UI / tool search 不显示 Presentations，检查 `$HOME/.codex/plugins/cache/openai-primary-runtime/presentations/*/skills/presentations`
+- 先运行 `scripts/check_presentation_runtime.mjs` 验证 runtime，再用 `scripts/build_artifact_deck.mjs` 导出 net-new PPTX
 - 输出可编辑 `.pptx`
 - 通过渲染预览、contact sheet、layout JSON 做质量检查
 - 不要把 `pptxgenjs` 当成 Codex 主生成引擎
@@ -45,7 +47,7 @@
         ↓
 [6] Codex Presentations 生成
     confirmed brief → claim spine → design system → contact-sheet plan
-    → artifact-tool presentation JSX → render → QA → export v1
+    → artifact-tool presentation JSX → build_artifact_deck.mjs → render → QA → export v1
         ↓
 [7] style-review
     看 contact sheet，选择保持、换配色、换结构、增强表现力或生成对比版本
@@ -323,6 +325,9 @@ python3 skills/ui-ux-pro-max/scripts/search.py "layout spacing contrast accessib
 
 请使用 Codex 的 Presentations 技能 / 插件作为主工作流。
 生成引擎使用 artifact-tool presentation JSX。
+如果当前 Codex 插件 UI 里没有 Presentations，请先检查 bundled runtime：
+$HOME/.codex/plugins/cache/openai-primary-runtime/presentations/*/skills/presentations
+只要该目录存在，就设置 SKILL_DIR 指向它，运行 scripts/check_presentation_runtime.mjs 验证 runtime，然后用 scripts/build_artifact_deck.mjs 完成 PPTX 导出。
 不要使用 pptxgenjs、Marp 或 Google Slides 作为主生成路径，除非你明确说明它们只是备用。
 
 [输入文件]
@@ -426,8 +431,8 @@ skills/pptx/scripts/thumbnail.py 生成缩略图
 | 需求 | 推荐路径 |
 |------|----------|
 | 快速写内容、预览、导出 PDF | Marp |
-| 高质量可编辑 PowerPoint | Codex `Presentations` |
-| 没有 Codex Presentations，但仍要可编辑 PPTX | `skills/pptx` + pptxgenjs |
+| 高质量可编辑 PowerPoint | Codex `Presentations` 能力；插件 UI 不显示时使用 bundled runtime scripts |
+| 没有 Codex Presentations runtime，但仍要可编辑 PPTX | 仅在用户明确绕过 Codex 主路径时用 `skills/pptx` + pptxgenjs |
 | 最终要交 Google Slides 原生文件 | 先用 Presentations 生成本地 PPTX，再通过 Google Drive 导入为 native Google Slides |
 
 不要把 Marp 导出的 PPTX 当作“可编辑 PPTX”。Marp 更接近视觉成品导出，适合放映和提交，不适合对方在 PowerPoint 里逐个编辑文本框和图形。
@@ -442,7 +447,7 @@ skills/pptx/scripts/thumbnail.py 生成缩略图
 1. 写 deck.md：每页 claim + proof object + source
 2. 用 ui-ux-pro-max 查 5 类信息：style / typography / color / chart / ux
 3. 选一个 design-lock，作为 Open Design 视觉合同
-4. 在 Codex Prompt 中强制使用 Presentations + artifact-tool presentation JSX
+4. 在 Codex Prompt 中强制使用 Presentations + artifact-tool presentation JSX；插件 UI 不显示时强制解析 bundled runtime scripts
 5. 要求 claim spine、design-system、contact-sheet plan、render QA、至少一轮修复
 6. 输出 PPTX/<task-slug>/final/<主题名>.pptx 和只读分享版 HTML
 ```

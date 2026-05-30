@@ -7,7 +7,7 @@ description: Orchestrates professional presentation creation from source materia
 
 A workflow orchestration skill for building professional presentations.
 
-In Codex, this skill is the front door for net-new presentation requests: run `Presentation Director` first, confirm output format, research strategy and visual inspiration, open the confirmation page, automatically wait for the click confirmation signal, then route the confirmed brief by `output_format`. Use Reveal.js HTML direct writing for `html-revealjs`, Codex Presentations for `pptx`, and both paths for `both`. If `pptx` is selected in Codex and the Codex Presentations plugin / `artifact-tool presentation-jsx` is not available in the current session, stop and report that the required plugin is missing; do not silently fall back to `python-pptx`, pptxgenjs, Google Slides, Keynote, or PowerPoint automation. The user must only click in the HTML UI; do not ask them to copy/paste, report choices in chat, or reply "confirmed". Do not let generation start from an unconfirmed prompt unless the user explicitly asks to skip the director.
+In Codex, this skill is the front door for net-new presentation requests: run `Presentation Director` first, confirm output format, research strategy and visual inspiration, open the confirmation page, automatically wait for the click confirmation signal, then route the confirmed brief by `output_format`. Use Reveal.js HTML direct writing for `html-revealjs`, Codex Presentations for `pptx`, and both paths for `both`. If `pptx` is selected in Codex, do not decide Presentations is missing only because it is absent from plugin UI or tool search; first resolve the bundled runtime under `$HOME/.codex/plugins/cache/openai-primary-runtime/presentations/*/skills/presentations`, run its runtime check, then use its artifact-tool build script for PPTX export. If neither the plugin nor bundled runtime is available, stop and report that the required Codex Presentations runtime is missing; do not silently fall back to `python-pptx`, pptxgenjs, Google Slides, Keynote, or PowerPoint automation. The user must only click in the HTML UI; do not ask them to copy/paste, report choices in chat, or reply "confirmed". Do not let generation start from an unconfirmed prompt unless the user explicitly asks to skip the director.
 
 Outside Codex, this skill coordinates the fuller deck.md-centered workflow: source material through slide planning, design intelligence, visual contract, and verified PPTX or HTML output.
 
@@ -82,9 +82,10 @@ Resolve dependencies in this order:
 | Dependency | Resolution |
 |------------|------------|
 | Presentation Director | Use `scripts/presentation_director.py` in the current repo if present; otherwise use `scripts/presentation_director.py` beside this SKILL.md. In Codex net-new PPTX requests, this is the first step before Presentations unless the user explicitly skips it or a user-confirmed brief already exists. |
+| Codex Presentations runtime | First use the active Presentations skill / plugin if exposed. If it is not exposed, resolve `$HOME/.codex/plugins/cache/openai-primary-runtime/presentations/*/skills/presentations`, set `SKILL_DIR` to that directory, run `node "$SKILL_DIR/scripts/check_presentation_runtime.mjs" --workspace "$WORKSPACE"`, then export net-new PPTX with `node "$SKILL_DIR/scripts/build_artifact_deck.mjs"`. Plugin UI absence is not a missing-runtime signal. |
 | `design-consultant` | Use the current repo's `skills/ui-ux-pro-max/scripts/search.py` if present; otherwise try `$HOME/.claude/skills/ui-ux-pro-max/scripts/search.py`, then `$HOME/.codex/skills/ui-ux-pro-max/scripts/search.py`. If none exists, synthesize a short design intelligence brief from the source and mark the tool as unavailable. |
 | `design-locks/` | Use the current repo's `design-locks/` if present. Otherwise look for `design-locks/` inside the directory containing this SKILL.md (bundled by install.sh). If neither exists, use a lightweight visual contract written directly in `deck.md` and do not cite a missing lock file. |
-| PPTX fallback | Use `skills/pptx/SKILL.md` only outside Codex, or when the user explicitly asks to bypass Codex Presentations. In Codex `pptx` / `both` mode, missing Presentations is a blocker, not a reason to run fallback tooling. |
+| PPTX fallback | Use `skills/pptx/SKILL.md` only outside Codex, or when the user explicitly asks to bypass Codex Presentations. In Codex `pptx` / `both` mode, missing Presentations means active plugin and bundled runtime are both unavailable or the runtime check failed; it is a blocker, not a reason to run fallback tooling. |
 | Reveal.js HTML | Native HTML output path. When `output_format` is `html-revealjs` or `both`, write Reveal.js 5.1.0 HTML directly; do not require `html-ppt-skill` or `guizang-ppt-skill`. |
 | Presentation Director docs | Treat `docs/pptx-master-workflow.md` and `docs/quality-gates.md` as optional project-level context. Outside Presentation Director, rely on this skill's reference files and the minimum QA checklist below instead. |
 
@@ -173,12 +174,13 @@ Use this path when the user asks for a new presentation in Codex. `output_format
     │    → Save to PPTX/<task-slug>/final/<deck-title>.html
     │
     ├─ output_format = "pptx"
-    │    → Codex Presentations plugin (artifact-tool presentation-jsx)
-    │    → If Presentations is unavailable, STOP instead of using fallback tooling
+    │    → Codex Presentations capability (active plugin or bundled runtime scripts)
+    │    → Runtime check before PPTX work; build_artifact_deck.mjs for net-new PPTX export
+    │    → If no runtime is available, STOP instead of using fallback tooling
     │    → Save to PPTX/<task-slug>/final/<deck-title>.pptx
     │
     └─ output_format = "both"
-         → First: Codex Presentations plugin → PPTX
+         → First: Codex Presentations capability → PPTX
          → Then: Claude/Codex writes Reveal.js HTML directly → HTML
          → Save both to PPTX/<task-slug>/final/
          → Note: HTML uses gradients/animation; PPTX uses solid-color equivalent
@@ -257,8 +259,8 @@ Claude Code and offline agents follow the same confirmation principle as Codex. 
 
 | Environment | Generation Path | Notes |
 |-------------|-----------------|-------|
-| Codex net-new PPTX | Presentation Director → Presentations plugin **(primary PPTX)** | Intake + research strategy + visual inspiration + brief confirmation must happen before `artifact-tool presentation-jsx` |
-| Codex targeted edit / confirmed brief | Presentations plugin | Direct only when not creating a new deck or when `brief-confirmed.json` already exists |
+| Codex net-new PPTX | Presentation Director → Presentations capability **(primary PPTX)** | Intake + research strategy + visual inspiration + brief confirmation must happen before `artifact-tool presentation-jsx`; plugin UI absence requires bundled runtime resolution |
+| Codex targeted edit / confirmed brief | Presentations capability | Direct only when not creating a new deck or when `brief-confirmed.json` already exists |
 | Claude Code / offline | Presentation Director or equivalent confirmation → `skills/pptx` + pptxgenjs **(fallback PPTX)** | Same `content_language` / `output_constraints` split and user-confirmation gate apply before pptxgenjs |
 | Codex / Claude Code (HTML) | Claude/Codex writes Reveal.js HTML directly | Native path. No external skill or plugin required. Version: 5.1.0 via jsDelivr CDN. |
 | Either | Marp | Quick draft / PDF only — not editable PPTX |
@@ -268,7 +270,7 @@ Claude Code and offline agents follow the same confirmation principle as Codex. 
 - `ui-ux-pro-max` = design intelligence tool, NOT a PPTX generator
 - `design-locks/` = visual contracts, NOT slide templates or generation engines
 - pptxgenjs = Claude Code fallback only, NOT the Codex primary path
-- In Codex `pptx` or `both` mode, missing Presentations = hard stop. Do not use `python-pptx`, pptxgenjs, Google Slides, Keynote, or PowerPoint automation as a substitute unless the user explicitly asks to bypass Presentations.
+- In Codex `pptx` or `both` mode, missing Presentations means both active plugin and bundled runtime are unavailable or the runtime check fails. Plugin UI absence alone is not enough. Do not use `python-pptx`, pptxgenjs, Google Slides, Keynote, or PowerPoint automation as a substitute unless the user explicitly asks to bypass Presentations.
 - Reveal.js HTML = first-class browser presentation output when selected, NOT a PPTX replacement
 - Marp output = NOT a professional editable PPTX
 
@@ -589,8 +591,8 @@ python3 scripts/presentation_director.py prompt --task "<short task slug>" --kin
 
 6. Route generation by `output_format` in the confirmed brief:
    - `html-revealjs`: write Reveal.js HTML directly; do NOT call Presentations plugin.
-   - `pptx`: verify Codex Presentations / `artifact-tool presentation-jsx` is available, then call Codex Presentations. If unavailable, stop and report the missing plugin.
-   - `both`: verify Codex Presentations / `artifact-tool presentation-jsx` is available, call Codex Presentations for PPTX, then write Reveal.js HTML directly. If Presentations is unavailable, stop before generating either output unless the user explicitly changes output format.
+   - `pptx`: verify Codex Presentations / `artifact-tool presentation-jsx` through active plugin or bundled runtime, run the runtime check, then export the net-new PPTX with `build_artifact_deck.mjs`. If unavailable, stop and report the missing runtime.
+   - `both`: verify Codex Presentations / `artifact-tool presentation-jsx` through active plugin or bundled runtime, export PPTX with `build_artifact_deck.mjs`, then write Reveal.js HTML directly. If Presentations runtime is unavailable, stop before generating either output unless the user explicitly changes output format.
 
 After v1 is generated, render Director pages and open the style review page. Use the local Director server for click-to-submit behavior; opening `style-review.html` directly is only a static preview. Wait for `revision.ready` if the user chooses a revision, then use:
 
@@ -816,7 +818,7 @@ Hard constraints (from `docs/ai-background-image.md`):
 
 Read `references/prompt-templates.md` for ready-to-use prompts.
 
-- In Codex: use Template A (Presentations plugin)
+- In Codex: use Template A (Presentations capability; active plugin or bundled runtime)
 - In Claude Code: use Template B (pptxgenjs fallback)
 - HTML deck (either environment): write Reveal.js 5.1.0 HTML directly using the spec above
 
